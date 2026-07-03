@@ -242,7 +242,7 @@ function showRolesCatalog() {
   try {
     const rows = execToObjects(`
       SELECT r.ruolo AS Ruolo, r.aura AS Aura, r.misticismo AS Misticismo, r.fazione AS "Condizioni Vittoria",
-             r.ombra AS Ombra, r.espansione AS Espansione, r.set_lune AS "Set",
+             r.ombra AS Ombra, r.set_lune AS "Set", r.espansione AS Espansione,
              (SELECT COUNT(*) FROM assignments a WHERE a.ruolo = r.ruolo) AS Volte_Giocato
       FROM roles r
       ORDER BY CASE r.espansione
@@ -261,7 +261,7 @@ function showRolesCatalog() {
         ELSE 13
       END, r.fazione, r.ruolo
     `);
-    renderRows(['Ruolo', 'Aura', 'Misticismo', 'Condizioni Vittoria', 'Ombra', 'Espansione', 'Set', 'Volte_Giocato'], rows);
+    renderRows(['Ruolo', 'Aura', 'Misticismo', 'Condizioni Vittoria', 'Ombra', 'Set', 'Espansione', 'Volte_Giocato'], rows);
     document.getElementById('result').innerHTML += `
       <div class="note-box"><b>Legenda:</b> O = Oscura, P = Pura, M = Mistico, NM = Non Mistico</div>
     `;
