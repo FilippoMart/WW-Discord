@@ -569,7 +569,7 @@ function showPlayerHistory() {
       SELECT a.play AS Partita, a.ruolo AS ruolo,
              COALESCE(r.fazione, '') AS "Condizioni Vittoria",
              COALESCE(r.ombra, '') AS Ombra,
-             gw.win_ruoli AS win_ruoli
+             gw.win AS win, gw.win_ruoli AS win_ruoli
       FROM assignments a
       LEFT JOIN roles r ON r.ruolo = a.ruolo
       LEFT JOIN game_wins gw ON gw.play = a.play
@@ -588,15 +588,38 @@ function showPlayerHistory() {
     });
     renderRows(['Partita', 'Ruolo', 'Condizioni Vittoria', 'Ombra', 'Vittoria'], result);
 
+    const totalGames = rows.length;
+    const totalWins = result.filter(r => r.Vittoria === 'Sì').length;
+
+    // Condizioni composte: solo per questa tabella, in aggiunta alle 18 atomiche
+    const COMPOSTE = [
+      { nome: 'Città', set: ['Villaggio', 'Mistici', 'Criminali', 'Inquisizione'] },
+      { nome: 'Branco', set: ['Capobranco', 'Lupo Reietto'] },
+      { nome: 'Traditore', set: ['Capobranco', 'Lupo Reietto', 'Lupo Solitario'] },
+      { nome: 'Ghoul', set: ['Vampiro', 'Nosferatu'] },
+      { nome: 'Megera', set: ['Capobranco', 'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Nosferatu', 'Necromante', 'Posseduto'] }
+    ];
+    function matchesComposta(tokens, set) {
+      return tokens.length === set.length && set.every(t => tokens.includes(t));
+    }
+
     const condStats = {};
     for (const row of rows) {
       const tokens = (row['Condizioni Vittoria'] || '').split(',').map(s => s.trim()).filter(Boolean);
       const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
+      const winTokens = (row.win || '').split(',').map(s => s.trim());
       const won = winRoles.includes(row.ruolo);
       for (const t of tokens) {
         if (!condStats[t]) condStats[t] = { giocate: 0, vinte: 0 };
         condStats[t].giocate += 1;
-        if (won) condStats[t].vinte += 1;
+        if (won && winTokens.includes(t)) condStats[t].vinte += 1;
+      }
+      for (const composta of COMPOSTE) {
+        if (matchesComposta(tokens, composta.set)) {
+          if (!condStats[composta.nome]) condStats[composta.nome] = { giocate: 0, vinte: 0 };
+          condStats[composta.nome].giocate += 1;
+          if (won) condStats[composta.nome].vinte += 1;
+        }
       }
     }
     const condRows = Object.entries(condStats).map(([cond, s]) => ({
@@ -612,8 +635,10 @@ function showPlayerHistory() {
       html += `<tr><td>${escapeHtml(row['Condizione Vittoria'])}</td><td>${row.Giocate}</td><td>${row.Vinte}</td><td>${row.Perse}</td><td>${(row['% Win'] * 100).toFixed(1)}%</td></tr>`;
     }
     html += '</tbody></table></div>';
+    const pctVittorie = totalGames > 0 ? (totalWins / totalGames * 100).toFixed(1) : '0.0';
     document.getElementById('result').innerHTML += `
-      <div class="note-box"><b>Per Condizione Vittoria:</b> quante volte hai giocato un ruolo appartenente a quella condizione, quante volte hai vinto e la relativa percentuale (un ruolo con più condizioni, es. Megera, conta per ciascuna).</div>
+      <div class="note-box"><b>% Vittorie:</b> ${totalWins} / ${totalGames} (${pctVittorie}%)</div>
+      <div class="note-box"><b>Per Condizione Vittoria:</b> quante volte hai giocato un ruolo appartenente a quella condizione, quante volte hai vinto <i>specificamente grazie a quella condizione</i> (deve comparire tra le fazioni vincenti di quella partita) e la relativa percentuale. Città, Branco, Traditore, Ghoul e Megera sono condizioni composte (solo in questa tabella): contano se hai giocato il ruolo con esattamente quella combinazione di fazioni, e vinci se il ruolo ha vinto in una qualsiasi di esse.</div>
       ${html}
     `;
   } catch (e) { showError(e); }
