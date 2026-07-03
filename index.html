@@ -469,7 +469,12 @@ function showUnderdogWin() {
     result.sort((a, b) => b._wilson - a._wilson);
     renderRows(['Giocatore', 'Vittorie', 'Partite Giocate', 'Media Underdog %', 'Wilson Score'], result);
     document.getElementById('result').innerHTML += `
-      <div class="note-box">Per ogni vittoria, misura quanto eri in minoranza tra i vincitori (1 − vincitori/giocatori totali di quella partita). "Media Underdog %" è la media semplice delle tue vittorie; il Wilson score usa come denominatore i giocatori di TUTTE le partite giocate (non solo quelle vinte), quindi vincere raramente su tante partite pesa meno di vincere spesso su poche.</div>
+      <div class="note-box">
+        Quanto sei stato "underdog" nelle tue vittorie, cioè quanto eri in minoranza tra chi ha vinto.<br><br>
+        <b>Per ogni vittoria:</b> % di giocatori esclusi dal gruppo vincente (es. vinci in 2 su 10 giocatori → 80%, vinci in 8 su 10 → 20%).<br>
+        <b>Media Underdog %:</b> la media semplice di questa percentuale sulle tue vittorie.<br>
+        <b>Wilson Score:</b> ordina la classifica pesando quanto ti puoi fidare della media — conta quante persone hai "battuto" nelle vittorie rispetto a quante ne hai affrontate in <i>tutte</i> le partite giocate (vinte o perse). Così vincere spesso in minoranza batte una singola vittoria fortunata su poche partite giocate.
+      </div>
     `;
   } catch (e) { showError(e); }
 }
