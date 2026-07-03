@@ -236,6 +236,9 @@ function showRolesCatalog() {
       ORDER BY fazione, ruolo
     `);
     renderRows(['Ruolo', 'Aura', 'Misticismo', 'Fazione', 'Ombra'], rows);
+    document.getElementById('result').innerHTML += `
+      <div class="note-box"><b>Legenda:</b> O = Oscura, P = Pura, M = Mistico, NM = Non Mistico</div>
+    `;
   } catch (e) { showError(e); }
 }
 
