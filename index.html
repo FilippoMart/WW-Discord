@@ -587,6 +587,35 @@ function showPlayerHistory() {
       };
     });
     renderRows(['Partita', 'Ruolo', 'Condizioni Vittoria', 'Ombra', 'Vittoria'], result);
+
+    const condStats = {};
+    for (const row of rows) {
+      const tokens = (row['Condizioni Vittoria'] || '').split(',').map(s => s.trim()).filter(Boolean);
+      const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
+      const won = winRoles.includes(row.ruolo);
+      for (const t of tokens) {
+        if (!condStats[t]) condStats[t] = { giocate: 0, vinte: 0 };
+        condStats[t].giocate += 1;
+        if (won) condStats[t].vinte += 1;
+      }
+    }
+    const condRows = Object.entries(condStats).map(([cond, s]) => ({
+      'Condizione Vittoria': cond,
+      Giocate: s.giocate,
+      Vinte: s.vinte,
+      Perse: s.giocate - s.vinte,
+      '% Win': s.vinte / s.giocate
+    })).sort((a, b) => b['% Win'] - a['% Win'] || b.Giocate - a.Giocate);
+
+    let html = '<div class="table-scroll"><table><thead><tr><th>Condizione Vittoria</th><th>Giocate</th><th>Vinte</th><th>Perse</th><th>% Win</th></tr></thead><tbody>';
+    for (const row of condRows) {
+      html += `<tr><td>${escapeHtml(row['Condizione Vittoria'])}</td><td>${row.Giocate}</td><td>${row.Vinte}</td><td>${row.Perse}</td><td>${(row['% Win'] * 100).toFixed(1)}%</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    document.getElementById('result').innerHTML += `
+      <div class="note-box"><b>Per Condizione Vittoria:</b> quante volte hai giocato un ruolo appartenente a quella condizione, quante volte hai vinto e la relativa percentuale (un ruolo con più condizioni, es. Megera, conta per ciascuna).</div>
+      ${html}
+    `;
   } catch (e) { showError(e); }
 }
 
