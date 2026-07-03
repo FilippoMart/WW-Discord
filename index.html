@@ -228,11 +228,11 @@ function showShadowCounts() {
     let result = Object.entries(stats).map(([nick, s]) => ({
       Giocatore: nick,
       Volte_Ombra: s.ombra,
-      Partite: s.total,
+      'Partite Giocate': s.total,
       'Ombra %': ((s.ombra / s.total) * 100).toFixed(1) + '%'
     }));
-    result = sortByRate(result, 'Volte_Ombra', 'Partite');
-    renderRows(['Giocatore', 'Volte_Ombra', 'Partite', 'Ombra %'], result);
+    result = sortByRate(result, 'Volte_Ombra', 'Partite Giocate');
+    renderRows(['Giocatore', 'Volte_Ombra', 'Partite Giocate', 'Ombra %'], result);
   } catch (e) { showError(e); }
 }
 
@@ -285,11 +285,11 @@ function showWinRates() {
     let result = Object.entries(stats).map(([nick, s]) => ({
       Giocatore: nick,
       Vittorie: s.wins,
-      Partite: s.total,
+      'Partite Giocate': s.total,
       'Win %': ((s.wins / s.total) * 100).toFixed(1) + '%'
     }));
-    result = sortByRate(result, 'Vittorie', 'Partite');
-    renderRows(['Giocatore', 'Vittorie', 'Partite', 'Win %'], result);
+    result = sortByRate(result, 'Vittorie', 'Partite Giocate');
+    renderRows(['Giocatore', 'Vittorie', 'Partite Giocate', 'Win %'], result);
   } catch (e) { showError(e); }
 }
 
@@ -299,15 +299,15 @@ function showGameComposition() {
   try {
     const rows = execToObjects(`
       SELECT p.nome AS Giocatore, a.ruolo AS Ruolo,
-             COALESCE(r.fazione, '') AS Fazione,
+             COALESCE(r.fazione, '') AS Condizioni_Vittoria,
              COALESCE(r.ombra, '') AS Ombra
       FROM assignments a
       JOIN players p ON p.nick = a.nick
       LEFT JOIN roles r ON r.ruolo = a.ruolo
       WHERE a.play = ?
-      ORDER BY CASE WHEN a.ruolo = 'MASTER' THEN 0 ELSE 1 END, Giocatore
+      ORDER BY CASE WHEN a.ruolo = 'MASTER' THEN 0 ELSE 1 END, r.fazione, Giocatore
     `, [play]);
-    renderRows(['Giocatore', 'Ruolo', 'Fazione', 'Ombra'], rows);
+    renderRows(['Giocatore', 'Ruolo', 'Condizioni_Vittoria', 'Ombra'], rows);
 
     const notesRows = execToObjects(`SELECT notes FROM game_notes WHERE play = ?`, [play]);
     const winRows = execToObjects(`SELECT win, win_ruoli FROM game_wins WHERE play = ?`, [play]);
@@ -331,7 +331,7 @@ function showPlayerHistory() {
   try {
     const rows = execToObjects(`
       SELECT a.play AS Partita, a.ruolo AS ruolo,
-             COALESCE(r.fazione, '') AS Fazione,
+             COALESCE(r.fazione, '') AS Condizioni_Vittoria,
              COALESCE(r.ombra, '') AS Ombra,
              gw.win_ruoli AS win_ruoli
       FROM assignments a
@@ -345,12 +345,12 @@ function showPlayerHistory() {
       return {
         Partita: row.Partita,
         Ruolo: row.ruolo,
-        Fazione: row.Fazione,
+        Condizioni_Vittoria: row.Condizioni_Vittoria,
         Ombra: row.Ombra,
         Vittoria: winRoles.includes(row.ruolo) ? 'Sì' : 'No'
       };
     });
-    renderRows(['Partita', 'Ruolo', 'Fazione', 'Ombra', 'Vittoria'], result);
+    renderRows(['Partita', 'Ruolo', 'Condizioni_Vittoria', 'Ombra', 'Vittoria'], result);
   } catch (e) { showError(e); }
 }
 
