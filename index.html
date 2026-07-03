@@ -306,6 +306,12 @@ function showRuoliPossibiliDistribution() {
       GROUP BY ruoli_possibili
       ORDER BY Numero_Partite DESC, Ruoli_Possibili
     `);
+    for (const row of rows) {
+      const match = row.Ruoli_Possibili.match(/^(\d+)\s*lun[ae]/);
+      if (match) {
+        row.Ruoli_Possibili = '🌙'.repeat(parseInt(match[1], 10)) + row.Ruoli_Possibili.slice(match[0].length);
+      }
+    }
     renderRows(['Ruoli_Possibili', 'Numero_Partite'], rows);
   } catch (e) { showError(e); }
 }
