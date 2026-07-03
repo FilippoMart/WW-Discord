@@ -591,7 +591,8 @@ function showPlayerHistory() {
     const totalGames = rows.length;
     const totalWins = result.filter(r => r.Vittoria === 'Sì').length;
 
-    // Condizioni composte: solo per questa tabella, in aggiunta alle 18 atomiche
+    // Condizioni composte: solo per questa tabella, ESCLUSIVE rispetto alle atomiche
+    // (se un ruolo corrisponde esattamente a una composta, conta solo per quella, non anche per i singoli token)
     const COMPOSTE = [
       { nome: 'Città', set: ['Villaggio', 'Mistici', 'Criminali', 'Inquisizione'] },
       { nome: 'Branco', set: ['Capobranco', 'Lupo Reietto'] },
@@ -603,22 +604,29 @@ function showPlayerHistory() {
       return tokens.length === set.length && set.every(t => tokens.includes(t));
     }
 
+    const allFazioni = execToObjects('SELECT DISTINCT fazione FROM roles');
+    const atomicTokens = new Set();
+    for (const r of allFazioni) {
+      for (const t of (r.fazione || '').split(',').map(s => s.trim()).filter(Boolean)) atomicTokens.add(t);
+    }
+
     const condStats = {};
+    for (const t of atomicTokens) condStats[t] = { giocate: 0, vinte: 0 };
+    for (const composta of COMPOSTE) condStats[composta.nome] = { giocate: 0, vinte: 0 };
+
     for (const row of rows) {
       const tokens = (row['Condizioni Vittoria'] || '').split(',').map(s => s.trim()).filter(Boolean);
       const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
       const winTokens = (row.win || '').split(',').map(s => s.trim());
       const won = winRoles.includes(row.ruolo);
-      for (const t of tokens) {
-        if (!condStats[t]) condStats[t] = { giocate: 0, vinte: 0 };
-        condStats[t].giocate += 1;
-        if (won && winTokens.includes(t)) condStats[t].vinte += 1;
-      }
-      for (const composta of COMPOSTE) {
-        if (matchesComposta(tokens, composta.set)) {
-          if (!condStats[composta.nome]) condStats[composta.nome] = { giocate: 0, vinte: 0 };
-          condStats[composta.nome].giocate += 1;
-          if (won) condStats[composta.nome].vinte += 1;
+      const composta = COMPOSTE.find(c => matchesComposta(tokens, c.set));
+      if (composta) {
+        condStats[composta.nome].giocate += 1;
+        if (won) condStats[composta.nome].vinte += 1;
+      } else {
+        for (const t of tokens) {
+          condStats[t].giocate += 1;
+          if (won && winTokens.includes(t)) condStats[t].vinte += 1;
         }
       }
     }
@@ -627,7 +635,7 @@ function showPlayerHistory() {
       Giocate: s.giocate,
       Vinte: s.vinte,
       Perse: s.giocate - s.vinte,
-      '% Win': s.vinte / s.giocate,
+      '% Win': s.giocate > 0 ? s.vinte / s.giocate : 0,
       'Wilson Score': wilsonLowerBound(s.vinte, s.giocate)
     })).sort((a, b) => b['Wilson Score'] - a['Wilson Score']);
 
@@ -639,15 +647,15 @@ function showPlayerHistory() {
     const pctVittorie = totalGames > 0 ? (totalWins / totalGames * 100).toFixed(1) : '0.0';
     document.getElementById('result').innerHTML += `
       <div class="note-box"><b>% Vittorie:</b> ${totalWins} / ${totalGames} (${pctVittorie}%)</div>
-      <div class="note-box"><b>Per Condizione Vittoria:</b> quante volte hai giocato un ruolo appartenente a quella condizione, quante volte hai vinto <i>specificamente grazie a quella condizione</i> (deve comparire tra le fazioni vincenti di quella partita) e la relativa percentuale. Ordinata per Wilson Score, non per % Win grezza.</div>
+      <div class="note-box"><b>Per Condizione Vittoria:</b> mostra tutte le 23 condizioni possibili (18 atomiche + 5 composte), anche se mai giocate. Quante volte hai giocato un ruolo appartenente a quella condizione, quante volte hai vinto <i>specificamente grazie a quella condizione</i> (deve comparire tra le fazioni vincenti di quella partita) e la relativa percentuale. Ordinata per Wilson Score, non per % Win grezza. Sommando "Giocate" su tutte le righe si ottiene il totale delle partite giocate, perché ogni ruolo conta per una condizione composta OPPURE per i suoi token atomici, mai per entrambi.</div>
       ${html}
-      <div class="note-box"><b>Legenda condizioni composte</b> (solo in questa tabella, in aggiunta alle 18 atomiche):<br>
+      <div class="note-box"><b>Legenda condizioni composte</b>:<br>
         <b>Città</b> = Villaggio, Mistici, Criminali, Inquisizione<br>
         <b>Branco</b> = Capobranco, Lupo Reietto<br>
         <b>Traditore</b> = Capobranco, Lupo Reietto, Lupo Solitario<br>
         <b>Ghoul</b> = Vampiro, Nosferatu<br>
         <b>Megera</b> = Capobranco, Lupo Reietto, Lupo Solitario, Vampiro, Nosferatu, Negromante, Posseduto<br>
-        Contano se hai giocato un ruolo con esattamente quella combinazione di fazioni; vinci se il ruolo ha vinto in una qualsiasi di esse.
+        Un ruolo con esattamente questa combinazione di fazioni conta solo per la condizione composta corrispondente, non per i singoli token.
       </div>
     `;
   } catch (e) { showError(e); }
