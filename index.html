@@ -216,12 +216,25 @@ function runCustomQuery() {
   }
 }
 
-// Ordina per percentuale decrescente, poi per numeratore decrescente, poi per totale crescente
+// Limite inferiore del Wilson score interval (z=1.96, 95%): stima prudente di un tasso
+// che tiene conto della dimensione del campione, non solo della percentuale grezza.
+function wilsonLowerBound(wins, total, z = 1.96) {
+  if (total === 0) return 0;
+  const p = wins / total;
+  const z2 = z * z;
+  const denominator = 1 + z2 / total;
+  const centre = p + z2 / (2 * total);
+  const margin = z * Math.sqrt((p * (1 - p) + z2 / (4 * total)) / total);
+  return (centre - margin) / denominator;
+}
+
+// Ordina per Wilson score decrescente (penalizza percentuali su pochi campioni),
+// a parità per numeratore decrescente poi per totale crescente
 function sortByRate(rows, numKey, totalKey) {
   return rows.slice().sort((a, b) => {
-    const pctA = a[numKey] / a[totalKey];
-    const pctB = b[numKey] / b[totalKey];
-    if (pctB !== pctA) return pctB - pctA;
+    const wsA = wilsonLowerBound(a[numKey], a[totalKey]);
+    const wsB = wilsonLowerBound(b[numKey], b[totalKey]);
+    if (wsB !== wsA) return wsB - wsA;
     if (b[numKey] !== a[numKey]) return b[numKey] - a[numKey];
     return a[totalKey] - b[totalKey];
   });
