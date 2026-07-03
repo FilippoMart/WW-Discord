@@ -230,19 +230,20 @@ function sortByRate(rows, numKey, totalKey) {
 function showShadowCounts() {
   try {
     const rows = execToObjects(`
-      SELECT a.nick AS nick, r.ombra AS ombra
+      SELECT a.nick AS nick, p.nome AS nome, r.ombra AS ombra
       FROM assignments a
+      JOIN players p ON p.nick = a.nick
       LEFT JOIN roles r ON r.ruolo = a.ruolo
       WHERE a.ruolo != 'MASTER'
     `);
     const stats = {};
     for (const row of rows) {
-      if (!stats[row.nick]) stats[row.nick] = { ombra: 0, total: 0 };
+      if (!stats[row.nick]) stats[row.nick] = { nome: row.nome, ombra: 0, total: 0 };
       stats[row.nick].total += 1;
       if (row.ombra === 'Ombra') stats[row.nick].ombra += 1;
     }
     let result = Object.entries(stats).map(([nick, s]) => ({
-      Giocatore: nick,
+      Giocatore: `${s.nome} (${nick})`,
       Volte_Ombra: s.ombra,
       'Partite Giocate': s.total,
       'Ombra %': ((s.ombra / s.total) * 100).toFixed(1) + '%'
@@ -373,21 +374,22 @@ function showMasterCounts() {
 function showWinRates() {
   try {
     const rows = execToObjects(`
-      SELECT a.nick AS nick, a.ruolo AS ruolo, gw.win_ruoli AS win_ruoli
+      SELECT a.nick AS nick, p.nome AS nome, a.ruolo AS ruolo, gw.win_ruoli AS win_ruoli
       FROM assignments a
+      JOIN players p ON p.nick = a.nick
       JOIN game_wins gw ON gw.play = a.play
       WHERE a.ruolo != 'MASTER'
     `);
     const stats = {};
     for (const row of rows) {
       const nick = row.nick;
-      if (!stats[nick]) stats[nick] = { wins: 0, total: 0 };
+      if (!stats[nick]) stats[nick] = { nome: row.nome, wins: 0, total: 0 };
       stats[nick].total += 1;
       const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
       if (winRoles.includes(row.ruolo)) stats[nick].wins += 1;
     }
     let result = Object.entries(stats).map(([nick, s]) => ({
-      Giocatore: nick,
+      Giocatore: `${s.nome} (${nick})`,
       Vittorie: s.wins,
       'Partite Giocate': s.total,
       'Win %': ((s.wins / s.total) * 100).toFixed(1) + '%'
