@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WW Discord Stats</title>
+<style>
+  :root {
+    --bg: #14161a;
+    --panel: #1e2126;
+    --border: #2c3038;
+    --text: #e6e8eb;
+    --muted: #9aa1ab;
+    --accent: #7c9cff;
+    --accent-dark: #5a78e0;
+    --shadow-color: #c96a6a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    padding: 24px;
+  }
+  h1 { margin: 0 0 4px; font-size: 1.6rem; }
+  .subtitle { color: var(--muted); margin-bottom: 24px; font-size: 0.9rem; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+  }
+  .panel h2 { margin-top: 0; font-size: 1.05rem; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  button {
+    background: var(--accent);
+    color: #10121a;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  button:hover { background: var(--accent-dark); }
+  select, textarea {
+    background: #10121a;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 0.9rem;
+  }
+  textarea {
+    width: 100%;
+    min-height: 80px;
+    resize: vertical;
+    font-family: ui-monospace, Consolas, monospace;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 14px;
+    font-size: 0.88rem;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    text-align: left;
+  }
+  th { background: #24272e; }
+  tr:nth-child(even) td { background: #191b20; }
+  .shadow-yes { color: var(--shadow-color); font-weight: 600; }
+  .status { font-size: 0.85rem; color: var(--muted); margin-bottom: 10px; }
+  .error { color: #e07a7a; white-space: pre-wrap; }
+  .note-box {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: #10121a;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<h1>WW Discord Stats</h1>
+<div class="subtitle">Interroga il database delle partite direttamente dal browser (sql.js, nessun server).</div>
+
+<div class="panel">
+  <div class="status" id="status">Caricamento database...</div>
+</div>
+
+<div class="panel">
+  <h2>Statistiche rapide</h2>
+  <div class="row">
+    <button onclick="showWinRates()">Win % per giocatore</button>
+    <button onclick="showShadowCounts()">Shadow per giocatore</button>
+    <button onclick="showGamesPerPlayer()">Partite giocate per giocatore</button>
+    <button onclick="showRolesCatalog()">Catalogo ruoli</button>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Composizione partita</h2>
+  <div class="row">
+    <select id="gameSelect"></select>
+    <button onclick="showGameComposition()">Mostra composizione</button>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Query SQL personalizzata</h2>
+  <textarea id="sqlBox" placeholder="SELECT * FROM players;"></textarea>
+  <div class="row" style="margin-top:10px;">
+    <button onclick="runCustomQuery()">Esegui</button>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Risultato</h2>
+  <div id="result"></div>
+</div>
+
+<script src="https://sql.js.org/dist/sql-wasm.js"></script>
+<script>
+let db = null;
+
+function setStatus(msg) {
+  document.getElementById('status').textContent = msg;
+}
+
+function renderTable(columns, values) {
+  const container = document.getElementById('result');
+  if (values.length === 0) {
+    container.innerHTML = '<div class="note-box">Nessun risultato.</div>';
+    return;
+  }
+  let html = '<table><thead><tr>';
+  for (const col of columns) html += `<th>${escapeHtml(col)}</th>`;
+  html += '</tr></thead><tbody>';
+  for (const row of values) {
+    html += '<tr>';
+    for (const cell of row) html += `<td>${escapeHtml(cell === null ? '' : String(cell))}</td>`;
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function renderRows(columns, rows) {
+  // rows: array of plain objects, matched against columns order
+  const values = rows.map(r => columns.map(c => r[c]));
+  renderTable(columns, values);
+}
+
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, s => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[s]));
+}
+
+function showError(e) {
+  document.getElementById('result').innerHTML = `<div class="error">${escapeHtml(e.message || String(e))}</div>`;
+}
+
+function execToObjects(sql, params = []) {
+  const stmt = db.prepare(sql);
+  if (params.length) stmt.bind(params);
+  const rows = [];
+  while (stmt.step()) rows.push(stmt.getAsObject());
+  stmt.free();
+  return rows;
+}
+
+function runCustomQuery() {
+  const sql = document.getElementById('sqlBox').value.trim();
+  if (!sql) return;
+  try {
+    const res = db.exec(sql);
+    if (res.length === 0) {
+      document.getElementById('result').innerHTML = '<div class="note-box">Query eseguita, nessuna riga restituita.</div>';
+      return;
+    }
+    renderTable(res[0].columns, res[0].values);
+  } catch (e) {
+    showError(e);
+  }
+}
+
+function showShadowCounts() {
+  try {
+    const rows = execToObjects(`
+      SELECT p.nome AS Giocatore, COUNT(*) AS Volte_Shadow
+      FROM assignments a
+      JOIN players p ON p.nick = a.nick
+      JOIN roles r ON r.ruolo = a.ruolo
+      WHERE r.shadow = 'Shadow'
+      GROUP BY p.nome
+      ORDER BY Volte_Shadow DESC
+    `);
+    renderRows(['Giocatore', 'Volte_Shadow'], rows);
+  } catch (e) { showError(e); }
+}
+
+function showGamesPerPlayer() {
+  try {
+    const rows = execToObjects(`
+      SELECT p.nome AS Giocatore, COUNT(*) AS Partite
+      FROM assignments a
+      JOIN players p ON p.nick = a.nick
+      WHERE a.ruolo != '_MASTER'
+      GROUP BY p.nome
+      ORDER BY Partite DESC
+    `);
+    renderRows(['Giocatore', 'Partite'], rows);
+  } catch (e) { showError(e); }
+}
+
+function showRolesCatalog() {
+  try {
+    const rows = execToObjects(`
+      SELECT ruolo AS Ruolo, aura AS Aura, misticismo AS Misticismo, fazione AS Fazione, shadow AS Shadow
+      FROM roles
+      ORDER BY fazione, ruolo
+    `);
+    renderRows(['Ruolo', 'Aura', 'Misticismo', 'Fazione', 'Shadow'], rows);
+  } catch (e) { showError(e); }
+}
+
+function showWinRates() {
+  try {
+    const rows = execToObjects(`
+      SELECT p.nome AS nome, a.ruolo AS ruolo, gw.win_ruoli AS win_ruoli
+      FROM assignments a
+      JOIN players p ON p.nick = a.nick
+      JOIN game_wins gw ON gw.play = a.play
+      WHERE a.ruolo != '_MASTER'
+    `);
+    const stats = {};
+    for (const row of rows) {
+      const nome = row.nome;
+      if (!stats[nome]) stats[nome] = { wins: 0, total: 0 };
+      stats[nome].total += 1;
+      const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
+      if (winRoles.includes(row.ruolo)) stats[nome].wins += 1;
+    }
+    const result = Object.entries(stats).map(([nome, s]) => ({
+      Giocatore: nome,
+      Vittorie: s.wins,
+      Partite: s.total,
+      'Win %': ((s.wins / s.total) * 100).toFixed(1) + '%'
+    })).sort((a, b) => (b.Vittorie / b.Partite) - (a.Vittorie / a.Partite));
+    renderRows(['Giocatore', 'Vittorie', 'Partite', 'Win %'], result);
+  } catch (e) { showError(e); }
+}
+
+function showGameComposition() {
+  const play = document.getElementById('gameSelect').value;
+  if (!play) return;
+  try {
+    const rows = execToObjects(`
+      SELECT p.nome AS Giocatore, a.ruolo AS Ruolo,
+             COALESCE(r.fazione, '') AS Fazione,
+             COALESCE(r.shadow, '') AS Shadow
+      FROM assignments a
+      JOIN players p ON p.nick = a.nick
+      LEFT JOIN roles r ON r.ruolo = a.ruolo
+      WHERE a.play = ?
+      ORDER BY Giocatore
+    `, [play]);
+    renderRows(['Giocatore', 'Ruolo', 'Fazione', 'Shadow'], rows);
+
+    const notesRows = execToObjects(`SELECT notes FROM game_notes WHERE play = ?`, [play]);
+    const winRows = execToObjects(`SELECT win, win_ruoli FROM game_wins WHERE play = ?`, [play]);
+
+    let extra = '';
+    if (winRows.length && winRows[0].win) {
+      extra += `<div class="note-box"><b>Vittoria:</b> ${escapeHtml(winRows[0].win)}`;
+      if (winRows[0].win_ruoli) extra += ` &mdash; ruoli vincenti: ${escapeHtml(winRows[0].win_ruoli)}`;
+      extra += `</div>`;
+    }
+    if (notesRows.length && notesRows[0].notes) {
+      extra += `<div class="note-box"><b>Note:</b> ${escapeHtml(notesRows[0].notes)}</div>`;
+    }
+    document.getElementById('result').innerHTML += extra;
+  } catch (e) { showError(e); }
+}
+
+async function init() {
+  try {
+    setStatus('Caricamento motore SQL...');
+    const SQL = await initSqlJs({ locateFile: file => `https://sql.js.org/dist/${file}` });
+    setStatus('Caricamento database...');
+    const resp = await fetch('data.sqlite');
+    if (!resp.ok) throw new Error('Impossibile caricare data.sqlite (' + resp.status + ')');
+    const buf = await resp.arrayBuffer();
+    db = new SQL.Database(new Uint8Array(buf));
+
+    const games = execToObjects('SELECT play FROM games ORDER BY play');
+    const select = document.getElementById('gameSelect');
+    select.innerHTML = games.map(g => `<option value="${g.play}">${g.play}</option>`).join('');
+
+    setStatus('Database caricato: ' + games.length + ' partite pronte.');
+  } catch (e) {
+    setStatus('Errore di caricamento.');
+    showError(e);
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>
