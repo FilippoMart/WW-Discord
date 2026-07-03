@@ -103,6 +103,7 @@
     <button onclick="showShadowCounts()">Ombra % Giocatore</button>
     <button onclick="showRolesCatalog()">Catalogo ruoli</button>
     <button onclick="showPlayerCountDistribution()">Partite per numero di giocatori</button>
+    <button onclick="showRuoliPossibiliDistribution()">Partite per set di ruoli possibili</button>
   </div>
 </div>
 
@@ -283,6 +284,18 @@ function showPlayerCountDistribution() {
   } catch (e) { showError(e); }
 }
 
+function showRuoliPossibiliDistribution() {
+  try {
+    const rows = execToObjects(`
+      SELECT ruoli_possibili AS Ruoli_Possibili, COUNT(*) AS Numero_Partite
+      FROM game_ruoli_possibili
+      GROUP BY ruoli_possibili
+      ORDER BY Numero_Partite DESC, Ruoli_Possibili
+    `);
+    renderRows(['Ruoli_Possibili', 'Numero_Partite'], rows);
+  } catch (e) { showError(e); }
+}
+
 function showWinRates() {
   try {
     const rows = execToObjects(`
@@ -327,10 +340,14 @@ function showGameComposition() {
     renderRows(['Giocatore', 'Ruolo', 'Condizioni_Vittoria', 'Ombra'], rows);
 
     const numGiocatori = rows.filter(r => r.Ruolo !== 'MASTER').length;
+    const ruoliPossRows = execToObjects(`SELECT ruoli_possibili FROM game_ruoli_possibili WHERE play = ?`, [play]);
     const notesRows = execToObjects(`SELECT notes FROM game_notes WHERE play = ?`, [play]);
     const winRows = execToObjects(`SELECT win, win_ruoli FROM game_wins WHERE play = ?`, [play]);
 
     let extra = `<div class="note-box"><b>Giocatori:</b> ${numGiocatori}</div>`;
+    if (ruoliPossRows.length && ruoliPossRows[0].ruoli_possibili) {
+      extra += `<div class="note-box"><b>Ruoli Possibili:</b> ${escapeHtml(ruoliPossRows[0].ruoli_possibili)}</div>`;
+    }
     if (notesRows.length && notesRows[0].notes) {
       extra += `<div class="note-box"><b>Note:</b> ${escapeHtml(notesRows[0].notes)}</div>`;
     }
