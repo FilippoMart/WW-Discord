@@ -101,7 +101,6 @@
   <div class="row">
     <button onclick="showWinRates()">Win % per giocatore</button>
     <button onclick="showShadowCounts()">Ombra % Giocatore</button>
-    <button onclick="showGamesPerPlayer()">Partite giocate per giocatore</button>
     <button onclick="showRolesCatalog()">Catalogo ruoli</button>
   </div>
 </div>
@@ -234,19 +233,6 @@ function showShadowCounts() {
     }));
     result = sortByRate(result, 'Volte_Ombra', 'Partite');
     renderRows(['Giocatore', 'Volte_Ombra', 'Partite', 'Ombra %'], result);
-  } catch (e) { showError(e); }
-}
-
-function showGamesPerPlayer() {
-  try {
-    const rows = execToObjects(`
-      SELECT a.nick AS Giocatore, COUNT(*) AS Partite
-      FROM assignments a
-      WHERE a.ruolo != 'MASTER'
-      GROUP BY a.nick
-      ORDER BY Partite DESC
-    `);
-    renderRows(['Giocatore', 'Partite'], rows);
   } catch (e) { showError(e); }
 }
 
