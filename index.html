@@ -408,11 +408,11 @@ function showMasterCounts() {
       }
     }
     const breakdown = Object.keys(stats).sort().map(master => {
-      const entry = { Master: master, 'Numero Partite': stats[master].total };
+      const entry = { Master: master, Games: stats[master].total };
       for (const f of FAZIONI) entry[f] = stats[master].factions[f] || 0;
       return entry;
     });
-    renderRows(['Master', 'Numero Partite', ...FAZIONI], breakdown);
+    renderRows(['Master', 'Games', ...FAZIONI], breakdown);
   } catch (e) { showError(e); }
 }
 
