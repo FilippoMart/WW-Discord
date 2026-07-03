@@ -397,6 +397,25 @@ function showMasterCounts() {
       ORDER BY Volte_Master DESC
     `);
     renderRows(['Giocatore', 'Volte_Master'], rows);
+
+    const winRows = execToObjects(`
+      SELECT p.nome || ' (' || a.nick || ')' AS Master, gw.win AS Vittoria, COUNT(*) AS Volte
+      FROM assignments a
+      JOIN players p ON p.nick = a.nick
+      JOIN game_wins gw ON gw.play = a.play
+      WHERE a.ruolo = 'MASTER'
+      GROUP BY a.nick, gw.win
+      ORDER BY Master, Volte DESC
+    `);
+    let html = '<div class="table-scroll"><table><thead><tr><th>Master</th><th>Vittoria</th><th>Volte</th></tr></thead><tbody>';
+    for (const row of winRows) {
+      html += `<tr><td>${escapeHtml(row.Master)}</td><td>${escapeHtml(row.Vittoria)}</td><td>${row.Volte}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    document.getElementById('result').innerHTML += `
+      <div class="note-box"><b>Fazioni vincenti per Master:</b> quante volte ogni fazione (dal campo Vittoria) ha vinto nelle partite arbitrate da ciascun master.</div>
+      ${html}
+    `;
   } catch (e) { showError(e); }
 }
 
