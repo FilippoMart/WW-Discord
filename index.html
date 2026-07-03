@@ -323,10 +323,17 @@ function showRuoliPossibiliDistribution() {
 function showAffezionati() {
   try {
     const rows = execToObjects(`
-      SELECT nick, ruolo FROM assignments WHERE ruolo != 'MASTER'
+      SELECT a.nick AS nick, p.nome AS nome, a.ruolo AS ruolo
+      FROM assignments a
+      JOIN players p ON p.nick = a.nick
+      WHERE a.ruolo != 'MASTER'
     `);
+    const nomeByNick = {};
     const totalByNick = {};
-    for (const r of rows) totalByNick[r.nick] = (totalByNick[r.nick] || 0) + 1;
+    for (const r of rows) {
+      nomeByNick[r.nick] = r.nome;
+      totalByNick[r.nick] = (totalByNick[r.nick] || 0) + 1;
+    }
 
     const countByRuolo = {};
     for (const r of rows) {
@@ -344,7 +351,7 @@ function showAffezionati() {
       for (const e of entries.filter(e => e.pct === maxPct)) {
         result.push({
           Ruolo: ruolo,
-          Giocatore: e.nick,
+          Giocatore: `${nomeByNick[e.nick]} (${e.nick})`,
           Volte: e.count,
           'Partite Giocate': e.total,
           Percentuale: (e.pct * 100).toFixed(1) + '%'
@@ -361,10 +368,11 @@ function showAffezionati() {
 function showMasterCounts() {
   try {
     const rows = execToObjects(`
-      SELECT nick AS Giocatore, COUNT(*) AS Volte_Master
-      FROM assignments
-      WHERE ruolo = 'MASTER'
-      GROUP BY nick
+      SELECT p.nome || ' (' || a.nick || ')' AS Giocatore, COUNT(*) AS Volte_Master
+      FROM assignments a
+      JOIN players p ON p.nick = a.nick
+      WHERE a.ruolo = 'MASTER'
+      GROUP BY a.nick
       ORDER BY Volte_Master DESC
     `);
     renderRows(['Giocatore', 'Volte_Master'], rows);
