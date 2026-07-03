@@ -78,6 +78,7 @@
   }
   th { background: #24272e; }
   tr:nth-child(even) td { background: #191b20; }
+  tr.win-row td { background: #1c3324; color: #7fd99a; font-weight: 600; }
   @media (max-width: 600px) {
     body { padding: 12px; }
     table { font-size: 0.78rem; }
@@ -156,7 +157,7 @@ function setStatus(msg) {
   document.getElementById('status').textContent = msg;
 }
 
-function renderTable(columns, values) {
+function renderTable(columns, values, rowClasses) {
   const container = document.getElementById('result');
   if (values.length === 0) {
     container.innerHTML = '<div class="note-box">Nessun risultato.</div>';
@@ -165,19 +166,20 @@ function renderTable(columns, values) {
   let html = '<div class="table-scroll"><table><thead><tr>';
   for (const col of columns) html += `<th>${escapeHtml(col)}</th>`;
   html += '</tr></thead><tbody>';
-  for (const row of values) {
-    html += '<tr>';
+  values.forEach((row, i) => {
+    const cls = rowClasses && rowClasses[i] ? ` class="${rowClasses[i]}"` : '';
+    html += `<tr${cls}>`;
     for (const cell of row) html += `<td>${escapeHtml(cell === null ? '' : String(cell))}</td>`;
     html += '</tr>';
-  }
+  });
   html += '</tbody></table></div>';
   container.innerHTML = html;
 }
 
-function renderRows(columns, rows) {
+function renderRows(columns, rows, rowClasses) {
   // rows: array of plain objects, matched against columns order
   const values = rows.map(r => columns.map(c => r[c]));
-  renderTable(columns, values);
+  renderTable(columns, values, rowClasses);
 }
 
 function escapeHtml(str) {
@@ -408,12 +410,15 @@ function showGameComposition() {
       WHERE a.play = ?
       ORDER BY CASE WHEN a.ruolo = 'MASTER' THEN 0 ELSE 1 END, r.fazione, Giocatore
     `, [play]);
-    renderRows(['Giocatore', 'Ruolo', 'Condizioni Vittoria', 'Ombra'], rows);
 
     const numGiocatori = rows.filter(r => r.Ruolo !== 'MASTER').length;
     const ruoliPossRows = execToObjects(`SELECT ruoli_possibili FROM game_ruoli_possibili WHERE play = ?`, [play]);
     const notesRows = execToObjects(`SELECT notes FROM game_notes WHERE play = ?`, [play]);
     const winRows = execToObjects(`SELECT win, win_ruoli FROM game_wins WHERE play = ?`, [play]);
+
+    const winRoles = (winRows.length ? (winRows[0].win_ruoli || '') : '').split(',').map(s => s.trim());
+    const rowClasses = rows.map(r => winRoles.includes(r.Ruolo) ? 'win-row' : '');
+    renderRows(['Giocatore', 'Ruolo', 'Condizioni Vittoria', 'Ombra'], rows, rowClasses);
 
     let extra = `<div class="note-box"><b>Giocatori:</b> ${numGiocatori}</div>`;
     if (ruoliPossRows.length && ruoliPossRows[0].ruoli_possibili) {
