@@ -105,6 +105,7 @@
     <button onclick="showPlayerCountDistribution()">Partite per numero di giocatori</button>
     <button onclick="showRuoliPossibiliDistribution()">Partite per set di ruoli possibili</button>
     <button onclick="showAffezionati()">Affezionati al ruolo</button>
+    <button onclick="showMasterCounts()">Master</button>
   </div>
 </div>
 
@@ -332,6 +333,19 @@ function showAffezionati() {
     document.getElementById('result').innerHTML += `
       <div class="note-box">Per ogni ruolo giocato almeno 3 volte dalla stessa persona, mostra chi lo ha interpretato con la percentuale più alta rispetto alle proprie partite giocate (a pari merito compaiono più giocatori).</div>
     `;
+  } catch (e) { showError(e); }
+}
+
+function showMasterCounts() {
+  try {
+    const rows = execToObjects(`
+      SELECT nick AS Giocatore, COUNT(*) AS Volte_Master
+      FROM assignments
+      WHERE ruolo = 'MASTER'
+      GROUP BY nick
+      ORDER BY Volte_Master DESC
+    `);
+    renderRows(['Giocatore', 'Volte_Master'], rows);
   } catch (e) { showError(e); }
 }
 
