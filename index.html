@@ -313,9 +313,10 @@ function showAffezionati() {
 
     const result = [];
     for (const ruolo of Object.keys(countByRuolo).sort()) {
-      const entries = Object.entries(countByRuolo[ruolo]).map(([nick, count]) => ({
-        nick, count, total: totalByNick[nick], pct: count / totalByNick[nick]
-      }));
+      const entries = Object.entries(countByRuolo[ruolo])
+        .map(([nick, count]) => ({ nick, count, total: totalByNick[nick], pct: count / totalByNick[nick] }))
+        .filter(e => e.count >= 3);
+      if (entries.length === 0) continue;
       const maxPct = Math.max(...entries.map(e => e.pct));
       for (const e of entries.filter(e => e.pct === maxPct)) {
         result.push({
@@ -328,6 +329,9 @@ function showAffezionati() {
       }
     }
     renderRows(['Ruolo', 'Giocatore', 'Volte', 'Partite Giocate', 'Percentuale'], result);
+    document.getElementById('result').innerHTML += `
+      <div class="note-box">Per ogni ruolo giocato almeno 3 volte dalla stessa persona, mostra chi lo ha interpretato con la percentuale più alta rispetto alle proprie partite giocate (a pari merito compaiono più giocatori).</div>
+    `;
   } catch (e) { showError(e); }
 }
 
