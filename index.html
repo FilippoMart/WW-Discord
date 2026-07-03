@@ -637,7 +637,7 @@ function showPlayerHistory() {
       Perse: s.giocate - s.vinte,
       '% Win': s.giocate > 0 ? s.vinte / s.giocate : 0,
       'Wilson Score': wilsonLowerBound(s.vinte, s.giocate)
-    })).sort((a, b) => b['Wilson Score'] - a['Wilson Score']);
+    })).sort((a, b) => b['Wilson Score'] - a['Wilson Score'] || a.Giocate - b.Giocate);
 
     let html = '<div class="table-scroll"><table><thead><tr><th>Condizione Vittoria</th><th>Giocate</th><th>Vinte</th><th>Perse</th><th>% Win</th><th>Wilson Score</th></tr></thead><tbody>';
     for (const row of condRows) {
