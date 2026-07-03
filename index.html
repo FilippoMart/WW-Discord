@@ -444,28 +444,32 @@ function showUnderdogWin() {
     const stats = {};
     for (const row of assignRows) {
       const info = gameInfo[row.play];
-      if (!info || info.N === 0 || !info.winRoles.includes(row.ruolo)) continue;
-      if (!stats[row.nick]) stats[row.nick] = { nome: row.nome, exclusivities: [], successes: 0, trials: 0 };
+      if (!info || info.N === 0) continue;
+      if (!stats[row.nick]) stats[row.nick] = { nome: row.nome, partite: 0, exclusivities: [], successes: 0, trials: 0 };
       const s = stats[row.nick];
-      s.exclusivities.push(1 - info.W / info.N);
-      s.successes += info.N - info.W;
-      s.trials += info.N;
+      s.partite += 1;
+      s.trials += info.N; // ogni partita giocata conta nel denominatore, non solo le vittorie
+      if (info.winRoles.includes(row.ruolo)) {
+        s.exclusivities.push(1 - info.W / info.N);
+        s.successes += info.N - info.W;
+      }
     }
 
-    let result = Object.entries(stats).map(([nick, s]) => {
+    let result = Object.entries(stats).filter(([, s]) => s.exclusivities.length > 0).map(([nick, s]) => {
       const media = s.exclusivities.reduce((a, b) => a + b, 0) / s.exclusivities.length;
       return {
         Giocatore: `${s.nome} (${nick})`,
         Vittorie: s.exclusivities.length,
+        'Partite Giocate': s.partite,
         'Media Underdog %': (media * 100).toFixed(1) + '%',
         'Wilson Score': wilsonLowerBound(s.successes, s.trials).toFixed(3),
         _wilson: wilsonLowerBound(s.successes, s.trials)
       };
     });
     result.sort((a, b) => b._wilson - a._wilson);
-    renderRows(['Giocatore', 'Vittorie', 'Media Underdog %', 'Wilson Score'], result);
+    renderRows(['Giocatore', 'Vittorie', 'Partite Giocate', 'Media Underdog %', 'Wilson Score'], result);
     document.getElementById('result').innerHTML += `
-      <div class="note-box">Per ogni vittoria, misura quanto eri in minoranza tra i vincitori (1 − vincitori/giocatori totali di quella partita). "Media Underdog %" è la media semplice delle tue vittorie; l'ordinamento usa il Wilson score (sul totale vincitori/giocatori aggregato) per premiare chi ha più vittorie osservate, non solo una percentuale fortunata su pochi dati.</div>
+      <div class="note-box">Per ogni vittoria, misura quanto eri in minoranza tra i vincitori (1 − vincitori/giocatori totali di quella partita). "Media Underdog %" è la media semplice delle tue vittorie; il Wilson score usa come denominatore i giocatori di TUTTE le partite giocate (non solo quelle vinte), quindi vincere raramente su tante partite pesa meno di vincere spesso su poche.</div>
     `;
   } catch (e) { showError(e); }
 }
