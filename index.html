@@ -407,12 +407,16 @@ function showMasterCounts() {
         stats[row.Master].factions[f] = (stats[row.Master].factions[f] || 0) + 1;
       }
     }
+    const OMBRE_FAZIONI = ['Capobranco', 'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Necromante', 'Nosferatu', 'Posseduto'];
     const breakdown = Object.keys(stats).sort().map(master => {
       const entry = { Master: master, Games: stats[master].total };
+      const ombre = OMBRE_FAZIONI.reduce((sum, f) => sum + (stats[master].factions[f] || 0), 0);
+      entry.Umani = stats[master].total - ombre;
+      entry.Ombre = ombre;
       for (const f of FAZIONI) entry[f] = stats[master].factions[f] || 0;
       return entry;
     });
-    renderRows(['Master', 'Games', ...FAZIONI], breakdown);
+    renderRows(['Master', 'Games', 'Umani', 'Ombre', ...FAZIONI], breakdown);
   } catch (e) { showError(e); }
 }
 
