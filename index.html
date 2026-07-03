@@ -300,6 +300,12 @@ function showPlayerCountDistribution() {
   } catch (e) { showError(e); }
 }
 
+function moonify(text) {
+  const match = text.match(/^(\d+)\s*lun[ae]/);
+  if (!match) return text;
+  return '🌙'.repeat(parseInt(match[1], 10)) + text.slice(match[0].length);
+}
+
 function showRuoliPossibiliDistribution() {
   try {
     const rows = execToObjects(`
@@ -308,12 +314,7 @@ function showRuoliPossibiliDistribution() {
       GROUP BY ruoli_possibili
       ORDER BY Numero_Partite DESC, Ruoli_Possibili
     `);
-    for (const row of rows) {
-      const match = row.Ruoli_Possibili.match(/^(\d+)\s*lun[ae]/);
-      if (match) {
-        row.Ruoli_Possibili = '🌙'.repeat(parseInt(match[1], 10)) + row.Ruoli_Possibili.slice(match[0].length);
-      }
-    }
+    for (const row of rows) row.Ruoli_Possibili = moonify(row.Ruoli_Possibili);
     renderRows(['Ruoli_Possibili', 'Numero_Partite'], rows);
   } catch (e) { showError(e); }
 }
@@ -422,7 +423,7 @@ function showGameComposition() {
 
     let extra = `<div class="note-box"><b>Giocatori:</b> ${numGiocatori}</div>`;
     if (ruoliPossRows.length && ruoliPossRows[0].ruoli_possibili) {
-      extra += `<div class="note-box"><b>Ruoli Possibili:</b> ${escapeHtml(ruoliPossRows[0].ruoli_possibili)}</div>`;
+      extra += `<div class="note-box"><b>Ruoli Possibili:</b> ${escapeHtml(moonify(ruoliPossRows[0].ruoli_possibili))}</div>`;
     }
     if (notesRows.length && notesRows[0].notes) {
       extra += `<div class="note-box"><b>Note:</b> ${escapeHtml(notesRows[0].notes)}</div>`;
