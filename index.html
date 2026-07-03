@@ -102,6 +102,7 @@
     <button onclick="showWinRates()">Win % per giocatore</button>
     <button onclick="showShadowCounts()">Ombra % Giocatore</button>
     <button onclick="showRolesCatalog()">Catalogo ruoli</button>
+    <button onclick="showPlayerCountDistribution()">Partite per numero di giocatori</button>
   </div>
 </div>
 
@@ -266,6 +267,22 @@ function showRolesCatalog() {
   } catch (e) { showError(e); }
 }
 
+function showPlayerCountDistribution() {
+  try {
+    const rows = execToObjects(`
+      SELECT COUNT(*) AS n
+      FROM assignments
+      WHERE ruolo != 'MASTER'
+      GROUP BY play
+    `);
+    const counts = {};
+    for (const row of rows) counts[row.n] = (counts[row.n] || 0) + 1;
+    const sizes = [8, 9, 10, 11, 12, 13, 14, 15];
+    const result = sizes.map(s => ({ Numero_Giocatori: s, Numero_Partite: counts[s] || 0 }));
+    renderRows(['Numero_Giocatori', 'Numero_Partite'], result);
+  } catch (e) { showError(e); }
+}
+
 function showWinRates() {
   try {
     const rows = execToObjects(`
@@ -309,10 +326,11 @@ function showGameComposition() {
     `, [play]);
     renderRows(['Giocatore', 'Ruolo', 'Condizioni_Vittoria', 'Ombra'], rows);
 
+    const numGiocatori = rows.filter(r => r.Ruolo !== 'MASTER').length;
     const notesRows = execToObjects(`SELECT notes FROM game_notes WHERE play = ?`, [play]);
     const winRows = execToObjects(`SELECT win, win_ruoli FROM game_wins WHERE play = ?`, [play]);
 
-    let extra = '';
+    let extra = `<div class="note-box"><b>Giocatori:</b> ${numGiocatori}</div>`;
     if (notesRows.length && notesRows[0].notes) {
       extra += `<div class="note-box"><b>Note:</b> ${escapeHtml(notesRows[0].notes)}</div>`;
     }
