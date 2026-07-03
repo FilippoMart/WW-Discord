@@ -313,13 +313,13 @@ function showGameComposition() {
     const winRows = execToObjects(`SELECT win, win_ruoli FROM game_wins WHERE play = ?`, [play]);
 
     let extra = '';
+    if (notesRows.length && notesRows[0].notes) {
+      extra += `<div class="note-box"><b>Note:</b> ${escapeHtml(notesRows[0].notes)}</div>`;
+    }
     if (winRows.length && winRows[0].win) {
       extra += `<div class="note-box"><b>Vittoria:</b> ${escapeHtml(winRows[0].win)}`;
       if (winRows[0].win_ruoli) extra += ` &mdash; ruoli vincenti: ${escapeHtml(winRows[0].win_ruoli)}`;
       extra += `</div>`;
-    }
-    if (notesRows.length && notesRows[0].notes) {
-      extra += `<div class="note-box"><b>Note:</b> ${escapeHtml(notesRows[0].notes)}</div>`;
     }
     document.getElementById('result').innerHTML += extra;
   } catch (e) { showError(e); }
