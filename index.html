@@ -248,7 +248,7 @@ function showRolesCatalog() {
         WHEN 'Nosferatu' THEN 10
         WHEN 'Fanmade' THEN 11
         ELSE 12
-      END, r.ruolo
+      END, r.fazione, r.ruolo
     `);
     renderRows(['Ruolo', 'Aura', 'Misticismo', 'Fazione', 'Ombra', 'Espansione', 'Volte_Giocato'], rows);
     document.getElementById('result').innerHTML += `
@@ -278,7 +278,12 @@ function showWinRates() {
       Vittorie: s.wins,
       Partite: s.total,
       'Win %': ((s.wins / s.total) * 100).toFixed(1) + '%'
-    })).sort((a, b) => (b.Vittorie / b.Partite) - (a.Vittorie / a.Partite) || b.Partite - a.Partite);
+    })).sort((a, b) => {
+      const pctA = a.Vittorie / a.Partite;
+      const pctB = b.Vittorie / b.Partite;
+      if (pctB !== pctA) return pctB - pctA;
+      return pctA === 0 ? a.Partite - b.Partite : b.Partite - a.Partite;
+    });
     renderRows(['Giocatore', 'Vittorie', 'Partite', 'Win %'], result);
   } catch (e) { showError(e); }
 }
