@@ -401,7 +401,7 @@ function showAffezionati() {
 function showMasterCounts() {
   try {
     const FAZIONI = ['Villaggio', 'Mistici', 'Criminali', 'Inquisizione', 'Capobranco',
-                     'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Necromante', 'Nosferatu', 'Posseduto'];
+                     'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Negromante', 'Nosferatu', 'Posseduto'];
 
     const winRows = execToObjects(`
       SELECT p.nome || ' (' || a.nick || ')' AS Master, gw.win AS Vittoria
@@ -419,7 +419,7 @@ function showMasterCounts() {
         stats[row.Master].factions[f] = (stats[row.Master].factions[f] || 0) + 1;
       }
     }
-    const OMBRE_FAZIONI = ['Capobranco', 'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Necromante', 'Nosferatu', 'Posseduto'];
+    const OMBRE_FAZIONI = ['Capobranco', 'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Negromante', 'Nosferatu', 'Posseduto'];
     const breakdown = Object.keys(stats).sort().map(master => {
       const entry = { Master: master, Games: stats[master].total };
       const ombre = OMBRE_FAZIONI.reduce((sum, f) => sum + (stats[master].factions[f] || 0), 0);
@@ -597,7 +597,7 @@ function showPlayerHistory() {
       { nome: 'Branco', set: ['Capobranco', 'Lupo Reietto'] },
       { nome: 'Traditore', set: ['Capobranco', 'Lupo Reietto', 'Lupo Solitario'] },
       { nome: 'Ghoul', set: ['Vampiro', 'Nosferatu'] },
-      { nome: 'Megera', set: ['Capobranco', 'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Nosferatu', 'Necromante', 'Posseduto'] }
+      { nome: 'Megera', set: ['Capobranco', 'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Nosferatu', 'Negromante', 'Posseduto'] }
     ];
     function matchesComposta(tokens, set) {
       return tokens.length === set.length && set.every(t => tokens.includes(t));
@@ -627,19 +627,28 @@ function showPlayerHistory() {
       Giocate: s.giocate,
       Vinte: s.vinte,
       Perse: s.giocate - s.vinte,
-      '% Win': s.vinte / s.giocate
-    })).sort((a, b) => b['% Win'] - a['% Win'] || b.Giocate - a.Giocate);
+      '% Win': s.vinte / s.giocate,
+      'Wilson Score': wilsonLowerBound(s.vinte, s.giocate)
+    })).sort((a, b) => b['Wilson Score'] - a['Wilson Score']);
 
-    let html = '<div class="table-scroll"><table><thead><tr><th>Condizione Vittoria</th><th>Giocate</th><th>Vinte</th><th>Perse</th><th>% Win</th></tr></thead><tbody>';
+    let html = '<div class="table-scroll"><table><thead><tr><th>Condizione Vittoria</th><th>Giocate</th><th>Vinte</th><th>Perse</th><th>% Win</th><th>Wilson Score</th></tr></thead><tbody>';
     for (const row of condRows) {
-      html += `<tr><td>${escapeHtml(row['Condizione Vittoria'])}</td><td>${row.Giocate}</td><td>${row.Vinte}</td><td>${row.Perse}</td><td>${(row['% Win'] * 100).toFixed(1)}%</td></tr>`;
+      html += `<tr><td>${escapeHtml(row['Condizione Vittoria'])}</td><td>${row.Giocate}</td><td>${row.Vinte}</td><td>${row.Perse}</td><td>${(row['% Win'] * 100).toFixed(1)}%</td><td>${row['Wilson Score'].toFixed(3)}</td></tr>`;
     }
     html += '</tbody></table></div>';
     const pctVittorie = totalGames > 0 ? (totalWins / totalGames * 100).toFixed(1) : '0.0';
     document.getElementById('result').innerHTML += `
       <div class="note-box"><b>% Vittorie:</b> ${totalWins} / ${totalGames} (${pctVittorie}%)</div>
-      <div class="note-box"><b>Per Condizione Vittoria:</b> quante volte hai giocato un ruolo appartenente a quella condizione, quante volte hai vinto <i>specificamente grazie a quella condizione</i> (deve comparire tra le fazioni vincenti di quella partita) e la relativa percentuale. Città, Branco, Traditore, Ghoul e Megera sono condizioni composte (solo in questa tabella): contano se hai giocato il ruolo con esattamente quella combinazione di fazioni, e vinci se il ruolo ha vinto in una qualsiasi di esse.</div>
+      <div class="note-box"><b>Per Condizione Vittoria:</b> quante volte hai giocato un ruolo appartenente a quella condizione, quante volte hai vinto <i>specificamente grazie a quella condizione</i> (deve comparire tra le fazioni vincenti di quella partita) e la relativa percentuale. Ordinata per Wilson Score, non per % Win grezza.</div>
       ${html}
+      <div class="note-box"><b>Legenda condizioni composte</b> (solo in questa tabella, in aggiunta alle 18 atomiche):<br>
+        <b>Città</b> = Villaggio, Mistici, Criminali, Inquisizione<br>
+        <b>Branco</b> = Capobranco, Lupo Reietto<br>
+        <b>Traditore</b> = Capobranco, Lupo Reietto, Lupo Solitario<br>
+        <b>Ghoul</b> = Vampiro, Nosferatu<br>
+        <b>Megera</b> = Capobranco, Lupo Reietto, Lupo Solitario, Vampiro, Nosferatu, Negromante, Posseduto<br>
+        Contano se hai giocato un ruolo con esattamente quella combinazione di fazioni; vinci se il ruolo ha vinto in una qualsiasi di esse.
+      </div>
     `;
   } catch (e) { showError(e); }
 }
