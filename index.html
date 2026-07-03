@@ -60,19 +60,29 @@
     resize: vertical;
     font-family: ui-monospace, Consolas, monospace;
   }
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 14px;
+  }
   table {
     border-collapse: collapse;
     width: 100%;
-    margin-top: 14px;
     font-size: 0.88rem;
   }
   th, td {
     border: 1px solid var(--border);
     padding: 6px 10px;
     text-align: left;
+    white-space: nowrap;
   }
   th { background: #24272e; }
   tr:nth-child(even) td { background: #191b20; }
+  @media (max-width: 600px) {
+    body { padding: 12px; }
+    table { font-size: 0.78rem; }
+    th, td { padding: 5px 7px; }
+  }
   .shadow-yes { color: var(--shadow-color); font-weight: 600; }
   .status { font-size: 0.85rem; color: var(--muted); margin-bottom: 10px; }
   .error { color: #e07a7a; white-space: pre-wrap; }
@@ -152,7 +162,7 @@ function renderTable(columns, values) {
     container.innerHTML = '<div class="note-box">Nessun risultato.</div>';
     return;
   }
-  let html = '<table><thead><tr>';
+  let html = '<div class="table-scroll"><table><thead><tr>';
   for (const col of columns) html += `<th>${escapeHtml(col)}</th>`;
   html += '</tr></thead><tbody>';
   for (const row of values) {
@@ -160,7 +170,7 @@ function renderTable(columns, values) {
     for (const cell of row) html += `<td>${escapeHtml(cell === null ? '' : String(cell))}</td>`;
     html += '</tr>';
   }
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
   container.innerHTML = html;
 }
 
