@@ -117,6 +117,7 @@
     <button onclick="showRolesCatalog()">Catalogo ruoli</button>
     <button onclick="showAffezionati()">Affezionati al ruolo</button>
     <button onclick="showMasterCounts()">Master</button>
+    <button onclick="showUnderdogWin()">Underdog Win</button>
     <button onclick="showPlayerCountDistribution()">Partite per numero di giocatori</button>
     <button onclick="showRuoliPossibiliDistribution()">Partite per set di ruoli possibili</button>
   </div>
@@ -417,6 +418,55 @@ function showMasterCounts() {
       return entry;
     });
     renderRows(['Master', 'Games', 'Umani', 'Ombre', ...FAZIONI], breakdown);
+  } catch (e) { showError(e); }
+}
+
+function showUnderdogWin() {
+  try {
+    const gameRows = execToObjects(`
+      SELECT gw.play AS play, gw.win_ruoli AS win_ruoli,
+             (SELECT COUNT(*) FROM assignments a2 WHERE a2.play = gw.play AND a2.ruolo != 'MASTER') AS N
+      FROM game_wins gw
+    `);
+    const gameInfo = {};
+    for (const g of gameRows) {
+      const winRoles = (g.win_ruoli || '').split(',').map(s => s.trim()).filter(Boolean);
+      gameInfo[g.play] = { N: g.N, W: winRoles.length, winRoles };
+    }
+
+    const assignRows = execToObjects(`
+      SELECT a.play AS play, a.nick AS nick, p.nome AS nome, a.ruolo AS ruolo
+      FROM assignments a
+      JOIN players p ON p.nick = a.nick
+      WHERE a.ruolo != 'MASTER'
+    `);
+
+    const stats = {};
+    for (const row of assignRows) {
+      const info = gameInfo[row.play];
+      if (!info || info.N === 0 || !info.winRoles.includes(row.ruolo)) continue;
+      if (!stats[row.nick]) stats[row.nick] = { nome: row.nome, exclusivities: [], successes: 0, trials: 0 };
+      const s = stats[row.nick];
+      s.exclusivities.push(1 - info.W / info.N);
+      s.successes += info.N - info.W;
+      s.trials += info.N;
+    }
+
+    let result = Object.entries(stats).map(([nick, s]) => {
+      const media = s.exclusivities.reduce((a, b) => a + b, 0) / s.exclusivities.length;
+      return {
+        Giocatore: `${s.nome} (${nick})`,
+        Vittorie: s.exclusivities.length,
+        'Media Underdog %': (media * 100).toFixed(1) + '%',
+        'Wilson Score': wilsonLowerBound(s.successes, s.trials).toFixed(3),
+        _wilson: wilsonLowerBound(s.successes, s.trials)
+      };
+    });
+    result.sort((a, b) => b._wilson - a._wilson);
+    renderRows(['Giocatore', 'Vittorie', 'Media Underdog %', 'Wilson Score'], result);
+    document.getElementById('result').innerHTML += `
+      <div class="note-box">Per ogni vittoria, misura quanto eri in minoranza tra i vincitori (1 − vincitori/giocatori totali di quella partita). "Media Underdog %" è la media semplice delle tue vittorie; l'ordinamento usa il Wilson score (sul totale vincitori/giocatori aggregato) per premiare chi ha più vittorie osservate, non solo una percentuale fortunata su pochi dati.</div>
+    `;
   } catch (e) { showError(e); }
 }
 
