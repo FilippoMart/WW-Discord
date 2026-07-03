@@ -104,6 +104,7 @@
     <button onclick="showRolesCatalog()">Catalogo ruoli</button>
     <button onclick="showPlayerCountDistribution()">Partite per numero di giocatori</button>
     <button onclick="showRuoliPossibiliDistribution()">Partite per set di ruoli possibili</button>
+    <button onclick="showAffezionati()">Affezionati al ruolo</button>
   </div>
 </div>
 
@@ -293,6 +294,40 @@ function showRuoliPossibiliDistribution() {
       ORDER BY Numero_Partite DESC, Ruoli_Possibili
     `);
     renderRows(['Ruoli_Possibili', 'Numero_Partite'], rows);
+  } catch (e) { showError(e); }
+}
+
+function showAffezionati() {
+  try {
+    const rows = execToObjects(`
+      SELECT nick, ruolo FROM assignments WHERE ruolo != 'MASTER'
+    `);
+    const totalByNick = {};
+    for (const r of rows) totalByNick[r.nick] = (totalByNick[r.nick] || 0) + 1;
+
+    const countByRuolo = {};
+    for (const r of rows) {
+      if (!countByRuolo[r.ruolo]) countByRuolo[r.ruolo] = {};
+      countByRuolo[r.ruolo][r.nick] = (countByRuolo[r.ruolo][r.nick] || 0) + 1;
+    }
+
+    const result = [];
+    for (const ruolo of Object.keys(countByRuolo).sort()) {
+      const entries = Object.entries(countByRuolo[ruolo]).map(([nick, count]) => ({
+        nick, count, total: totalByNick[nick], pct: count / totalByNick[nick]
+      }));
+      const maxPct = Math.max(...entries.map(e => e.pct));
+      for (const e of entries.filter(e => e.pct === maxPct)) {
+        result.push({
+          Ruolo: ruolo,
+          Giocatore: e.nick,
+          Volte: e.count,
+          'Partite Giocate': e.total,
+          Percentuale: (e.pct * 100).toFixed(1) + '%'
+        });
+      }
+    }
+    renderRows(['Ruolo', 'Giocatore', 'Volte', 'Partite Giocate', 'Percentuale'], result);
   } catch (e) { showError(e); }
 }
 
