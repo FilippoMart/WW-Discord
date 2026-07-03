@@ -411,12 +411,13 @@ function showWinRates() {
     }
     let result = Object.entries(stats).map(([nick, s]) => ({
       Giocatore: `${s.nome} (${nick})`,
-      Vittorie: s.wins,
-      'Partite Giocate': s.total,
-      'Win %': ((s.wins / s.total) * 100).toFixed(1) + '%'
+      Win: s.wins,
+      Games: s.total,
+      'Win %': ((s.wins / s.total) * 100).toFixed(1) + '%',
+      'Wilson Score': wilsonLowerBound(s.wins, s.total).toFixed(3)
     }));
-    result = sortByRate(result, 'Vittorie', 'Partite Giocate');
-    renderRows(['Giocatore', 'Vittorie', 'Partite Giocate', 'Win %'], result);
+    result = sortByRate(result, 'Win', 'Games');
+    renderRows(['Giocatore', 'Win', 'Games', 'Win %', 'Wilson Score'], result);
   } catch (e) { showError(e); }
 }
 
