@@ -100,7 +100,7 @@
   <h2>Statistiche rapide</h2>
   <div class="row">
     <button onclick="showWinRates()">Win % per giocatore</button>
-    <button onclick="showShadowCounts()">Shadow per giocatore</button>
+    <button onclick="showShadowCounts()">Ombra per giocatore</button>
     <button onclick="showGamesPerPlayer()">Partite giocate per giocatore</button>
     <button onclick="showRolesCatalog()">Catalogo ruoli</button>
   </div>
@@ -204,14 +204,14 @@ function runCustomQuery() {
 function showShadowCounts() {
   try {
     const rows = execToObjects(`
-      SELECT a.nick AS Giocatore, COUNT(*) AS Volte_Shadow
+      SELECT a.nick AS Giocatore, COUNT(*) AS Volte_Ombra
       FROM assignments a
       JOIN roles r ON r.ruolo = a.ruolo
-      WHERE r.shadow = 'Shadow'
+      WHERE r.ombra = 'Ombra'
       GROUP BY a.nick
-      ORDER BY Volte_Shadow DESC
+      ORDER BY Volte_Ombra DESC
     `);
-    renderRows(['Giocatore', 'Volte_Shadow'], rows);
+    renderRows(['Giocatore', 'Volte_Ombra'], rows);
   } catch (e) { showError(e); }
 }
 
@@ -231,11 +231,11 @@ function showGamesPerPlayer() {
 function showRolesCatalog() {
   try {
     const rows = execToObjects(`
-      SELECT ruolo AS Ruolo, aura AS Aura, misticismo AS Misticismo, fazione AS Fazione, shadow AS Shadow
+      SELECT ruolo AS Ruolo, aura AS Aura, misticismo AS Misticismo, fazione AS Fazione, ombra AS Ombra
       FROM roles
       ORDER BY fazione, ruolo
     `);
-    renderRows(['Ruolo', 'Aura', 'Misticismo', 'Fazione', 'Shadow'], rows);
+    renderRows(['Ruolo', 'Aura', 'Misticismo', 'Fazione', 'Ombra'], rows);
   } catch (e) { showError(e); }
 }
 
@@ -260,7 +260,7 @@ function showWinRates() {
       Vittorie: s.wins,
       Partite: s.total,
       'Win %': ((s.wins / s.total) * 100).toFixed(1) + '%'
-    })).sort((a, b) => (b.Vittorie / b.Partite) - (a.Vittorie / a.Partite));
+    })).sort((a, b) => (b.Vittorie / b.Partite) - (a.Vittorie / a.Partite) || b.Partite - a.Partite);
     renderRows(['Giocatore', 'Vittorie', 'Partite', 'Win %'], result);
   } catch (e) { showError(e); }
 }
@@ -272,14 +272,14 @@ function showGameComposition() {
     const rows = execToObjects(`
       SELECT p.nome AS Giocatore, a.ruolo AS Ruolo,
              COALESCE(r.fazione, '') AS Fazione,
-             COALESCE(r.shadow, '') AS Shadow
+             COALESCE(r.ombra, '') AS Ombra
       FROM assignments a
       JOIN players p ON p.nick = a.nick
       LEFT JOIN roles r ON r.ruolo = a.ruolo
       WHERE a.play = ?
       ORDER BY CASE WHEN a.ruolo = 'MASTER' THEN 0 ELSE 1 END, Giocatore
     `, [play]);
-    renderRows(['Giocatore', 'Ruolo', 'Fazione', 'Shadow'], rows);
+    renderRows(['Giocatore', 'Ruolo', 'Fazione', 'Ombra'], rows);
 
     const notesRows = execToObjects(`SELECT notes FROM game_notes WHERE play = ?`, [play]);
     const winRows = execToObjects(`SELECT win, win_ruoli FROM game_wins WHERE play = ?`, [play]);
@@ -304,7 +304,7 @@ function showPlayerHistory() {
     const rows = execToObjects(`
       SELECT a.play AS Partita, a.ruolo AS ruolo,
              COALESCE(r.fazione, '') AS Fazione,
-             COALESCE(r.shadow, '') AS Shadow,
+             COALESCE(r.ombra, '') AS Ombra,
              gw.win_ruoli AS win_ruoli
       FROM assignments a
       LEFT JOIN roles r ON r.ruolo = a.ruolo
@@ -318,11 +318,11 @@ function showPlayerHistory() {
         Partita: row.Partita,
         Ruolo: row.ruolo,
         Fazione: row.Fazione,
-        Shadow: row.Shadow,
+        Ombra: row.Ombra,
         Vittoria: winRoles.includes(row.ruolo) ? 'Sì' : 'No'
       };
     });
-    renderRows(['Partita', 'Ruolo', 'Fazione', 'Shadow', 'Vittoria'], result);
+    renderRows(['Partita', 'Ruolo', 'Fazione', 'Ombra', 'Vittoria'], result);
   } catch (e) { showError(e); }
 }
 
