@@ -220,7 +220,7 @@ function showGamesPerPlayer() {
     const rows = execToObjects(`
       SELECT a.nick AS Giocatore, COUNT(*) AS Partite
       FROM assignments a
-      WHERE a.ruolo != '_MASTER'
+      WHERE a.ruolo != 'MASTER'
       GROUP BY a.nick
       ORDER BY Partite DESC
     `);
@@ -245,7 +245,7 @@ function showWinRates() {
       SELECT a.nick AS nick, a.ruolo AS ruolo, gw.win_ruoli AS win_ruoli
       FROM assignments a
       JOIN game_wins gw ON gw.play = a.play
-      WHERE a.ruolo != '_MASTER'
+      WHERE a.ruolo != 'MASTER'
     `);
     const stats = {};
     for (const row of rows) {
@@ -277,7 +277,7 @@ function showGameComposition() {
       JOIN players p ON p.nick = a.nick
       LEFT JOIN roles r ON r.ruolo = a.ruolo
       WHERE a.play = ?
-      ORDER BY Giocatore
+      ORDER BY CASE WHEN a.ruolo = 'MASTER' THEN 0 ELSE 1 END, Giocatore
     `, [play]);
     renderRows(['Giocatore', 'Ruolo', 'Fazione', 'Shadow'], rows);
 
@@ -309,7 +309,7 @@ function showPlayerHistory() {
       FROM assignments a
       LEFT JOIN roles r ON r.ruolo = a.ruolo
       LEFT JOIN game_wins gw ON gw.play = a.play
-      WHERE a.nick = ? AND a.ruolo != '_MASTER'
+      WHERE a.nick = ? AND a.ruolo != 'MASTER'
       ORDER BY a.play
     `, [nick]);
     const result = rows.map(row => {
