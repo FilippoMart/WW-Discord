@@ -477,9 +477,11 @@ function showGameComposition() {
       extra += `<div class="note-box"><b>Note:</b> ${escapeHtml(notesRows[0].notes)}</div>`;
     }
     if (winRows.length && winRows[0].win) {
-      extra += `<div class="note-box"><b>Vittoria:</b> ${escapeHtml(winRows[0].win)}`;
-      if (winRows[0].win_ruoli) extra += ` &mdash; ruoli vincenti: ${escapeHtml(winRows[0].win_ruoli)}`;
-      extra += `</div>`;
+      extra += `<div class="note-box"><b>Vittoria:</b> ${escapeHtml(winRows[0].win)}</div>`;
+    }
+    if (winRows.length && winRows[0].win_ruoli) {
+      const winningPlayers = rows.filter(r => winRoles.includes(r.Ruolo)).map(r => r.Giocatore);
+      extra += `<div class="note-box"><b>Giocatori Vincenti:</b> ${escapeHtml(winningPlayers.join(', '))}</div>`;
     }
     document.getElementById('result').innerHTML += extra;
   } catch (e) { showError(e); }
