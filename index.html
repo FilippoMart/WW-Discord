@@ -231,11 +231,26 @@ function showGamesPerPlayer() {
 function showRolesCatalog() {
   try {
     const rows = execToObjects(`
-      SELECT ruolo AS Ruolo, aura AS Aura, misticismo AS Misticismo, fazione AS Fazione, ombra AS Ombra
-      FROM roles
-      ORDER BY fazione, ruolo
+      SELECT r.ruolo AS Ruolo, r.aura AS Aura, r.misticismo AS Misticismo, r.fazione AS Fazione,
+             r.ombra AS Ombra, r.espansione AS Espansione,
+             (SELECT COUNT(*) FROM assignments a WHERE a.ruolo = r.ruolo) AS Volte_Giocato
+      FROM roles r
+      ORDER BY CASE r.espansione
+        WHEN 'Base' THEN 1
+        WHEN 'Città' THEN 2
+        WHEN 'Faida Umana' THEN 3
+        WHEN 'Vampiri' THEN 4
+        WHEN 'Amanti' THEN 5
+        WHEN 'Faida Lupi' THEN 6
+        WHEN 'Maledizioni' THEN 7
+        WHEN 'Inquisizione' THEN 8
+        WHEN 'Posseduto' THEN 9
+        WHEN 'Nosferatu' THEN 10
+        WHEN 'Fanmade' THEN 11
+        ELSE 12
+      END, r.ruolo
     `);
-    renderRows(['Ruolo', 'Aura', 'Misticismo', 'Fazione', 'Ombra'], rows);
+    renderRows(['Ruolo', 'Aura', 'Misticismo', 'Fazione', 'Ombra', 'Espansione', 'Volte_Giocato'], rows);
     document.getElementById('result').innerHTML += `
       <div class="note-box"><b>Legenda:</b> O = Oscura, P = Pura, M = Mistico, NM = Non Mistico</div>
     `;
