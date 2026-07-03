@@ -241,7 +241,7 @@ function showShadowCounts() {
 function showRolesCatalog() {
   try {
     const rows = execToObjects(`
-      SELECT r.ruolo AS Ruolo, r.aura AS Aura, r.misticismo AS Misticismo, r.fazione AS Condizioni_Vittoria,
+      SELECT r.ruolo AS Ruolo, r.aura AS Aura, r.misticismo AS Misticismo, r.fazione AS "Condizioni Vittoria",
              r.ombra AS Ombra, r.espansione AS Espansione,
              (SELECT COUNT(*) FROM assignments a WHERE a.ruolo = r.ruolo) AS Volte_Giocato
       FROM roles r
@@ -261,7 +261,7 @@ function showRolesCatalog() {
         ELSE 13
       END, r.fazione, r.ruolo
     `);
-    renderRows(['Ruolo', 'Aura', 'Misticismo', 'Condizioni_Vittoria', 'Ombra', 'Espansione', 'Volte_Giocato'], rows);
+    renderRows(['Ruolo', 'Aura', 'Misticismo', 'Condizioni Vittoria', 'Ombra', 'Espansione', 'Volte_Giocato'], rows);
     document.getElementById('result').innerHTML += `
       <div class="note-box"><b>Legenda:</b> O = Oscura, P = Pura, M = Mistico, NM = Non Mistico</div>
     `;
@@ -329,7 +329,7 @@ function showGameComposition() {
   try {
     const rows = execToObjects(`
       SELECT p.nome AS Giocatore, a.ruolo AS Ruolo,
-             COALESCE(r.fazione, '') AS Condizioni_Vittoria,
+             COALESCE(r.fazione, '') AS "Condizioni Vittoria",
              COALESCE(r.ombra, '') AS Ombra
       FROM assignments a
       JOIN players p ON p.nick = a.nick
@@ -337,7 +337,7 @@ function showGameComposition() {
       WHERE a.play = ?
       ORDER BY CASE WHEN a.ruolo = 'MASTER' THEN 0 ELSE 1 END, r.fazione, Giocatore
     `, [play]);
-    renderRows(['Giocatore', 'Ruolo', 'Condizioni_Vittoria', 'Ombra'], rows);
+    renderRows(['Giocatore', 'Ruolo', 'Condizioni Vittoria', 'Ombra'], rows);
 
     const numGiocatori = rows.filter(r => r.Ruolo !== 'MASTER').length;
     const ruoliPossRows = execToObjects(`SELECT ruoli_possibili FROM game_ruoli_possibili WHERE play = ?`, [play]);
@@ -366,7 +366,7 @@ function showPlayerHistory() {
   try {
     const rows = execToObjects(`
       SELECT a.play AS Partita, a.ruolo AS ruolo,
-             COALESCE(r.fazione, '') AS Condizioni_Vittoria,
+             COALESCE(r.fazione, '') AS "Condizioni Vittoria",
              COALESCE(r.ombra, '') AS Ombra,
              gw.win_ruoli AS win_ruoli
       FROM assignments a
@@ -380,12 +380,12 @@ function showPlayerHistory() {
       return {
         Partita: row.Partita,
         Ruolo: row.ruolo,
-        Condizioni_Vittoria: row.Condizioni_Vittoria,
+        'Condizioni Vittoria': row['Condizioni Vittoria'],
         Ombra: row.Ombra,
         Vittoria: winRoles.includes(row.ruolo) ? 'Sì' : 'No'
       };
     });
-    renderRows(['Partita', 'Ruolo', 'Condizioni_Vittoria', 'Ombra', 'Vittoria'], result);
+    renderRows(['Partita', 'Ruolo', 'Condizioni Vittoria', 'Ombra', 'Vittoria'], result);
   } catch (e) { showError(e); }
 }
 
