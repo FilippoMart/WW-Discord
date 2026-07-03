@@ -204,12 +204,11 @@ function runCustomQuery() {
 function showShadowCounts() {
   try {
     const rows = execToObjects(`
-      SELECT p.nome AS Giocatore, COUNT(*) AS Volte_Shadow
+      SELECT a.nick AS Giocatore, COUNT(*) AS Volte_Shadow
       FROM assignments a
-      JOIN players p ON p.nick = a.nick
       JOIN roles r ON r.ruolo = a.ruolo
       WHERE r.shadow = 'Shadow'
-      GROUP BY p.nome
+      GROUP BY a.nick
       ORDER BY Volte_Shadow DESC
     `);
     renderRows(['Giocatore', 'Volte_Shadow'], rows);
@@ -219,11 +218,10 @@ function showShadowCounts() {
 function showGamesPerPlayer() {
   try {
     const rows = execToObjects(`
-      SELECT p.nome AS Giocatore, COUNT(*) AS Partite
+      SELECT a.nick AS Giocatore, COUNT(*) AS Partite
       FROM assignments a
-      JOIN players p ON p.nick = a.nick
       WHERE a.ruolo != '_MASTER'
-      GROUP BY p.nome
+      GROUP BY a.nick
       ORDER BY Partite DESC
     `);
     renderRows(['Giocatore', 'Partite'], rows);
@@ -244,22 +242,21 @@ function showRolesCatalog() {
 function showWinRates() {
   try {
     const rows = execToObjects(`
-      SELECT p.nome AS nome, a.ruolo AS ruolo, gw.win_ruoli AS win_ruoli
+      SELECT a.nick AS nick, a.ruolo AS ruolo, gw.win_ruoli AS win_ruoli
       FROM assignments a
-      JOIN players p ON p.nick = a.nick
       JOIN game_wins gw ON gw.play = a.play
       WHERE a.ruolo != '_MASTER'
     `);
     const stats = {};
     for (const row of rows) {
-      const nome = row.nome;
-      if (!stats[nome]) stats[nome] = { wins: 0, total: 0 };
-      stats[nome].total += 1;
+      const nick = row.nick;
+      if (!stats[nick]) stats[nick] = { wins: 0, total: 0 };
+      stats[nick].total += 1;
       const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
-      if (winRoles.includes(row.ruolo)) stats[nome].wins += 1;
+      if (winRoles.includes(row.ruolo)) stats[nick].wins += 1;
     }
-    const result = Object.entries(stats).map(([nome, s]) => ({
-      Giocatore: nome,
+    const result = Object.entries(stats).map(([nick, s]) => ({
+      Giocatore: nick,
       Vittorie: s.wins,
       Partite: s.total,
       'Win %': ((s.wins / s.total) * 100).toFixed(1) + '%'
