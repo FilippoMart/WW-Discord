@@ -96,6 +96,8 @@
     font-size: 0.88rem;
     color: var(--muted);
   }
+  .note-box a { color: var(--accent); }
+  .note-box a:hover { color: var(--accent-dark); }
 </style>
 </head>
 <body>
@@ -294,6 +296,12 @@ function showRolesCatalog() {
     renderRows(['Ruolo', 'Aura', 'Misticismo', 'Condizioni Vittoria', 'Ombra', 'Set', 'Espansione', 'Volte_Giocato'], rows);
     document.getElementById('result').innerHTML += `
       <div class="note-box"><b>Legenda:</b> O = Oscura, P = Pura, M = Mistico, NM = Non Mistico</div>
+      <div class="note-box"><b>Regolamenti:</b>
+        <a href="docs/RuoliDueLune.pdf" target="_blank">Ruoli 2 Lune</a> ·
+        <a href="docs/RegoleDueLune.pdf" target="_blank">Regole 2 Lune</a> ·
+        <a href="docs/RuoliTreLune.pdf" target="_blank">Ruoli 3 Lune</a> ·
+        <a href="docs/RegoleTreLune.pdf" target="_blank">Regole 3 Lune</a>
+      </div>
     `;
   } catch (e) { showError(e); }
 }
