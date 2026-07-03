@@ -273,6 +273,8 @@ function showRolesCatalog() {
         ELSE 13
       END, r.fazione, r.ruolo
     `);
+    const moonIcons = { '1 luna': '🌙', '2 lune': '🌙🌙', '3 lune': '🌙🌙🌙' };
+    for (const row of rows) row.Set = moonIcons[row.Set] || '';
     renderRows(['Ruolo', 'Aura', 'Misticismo', 'Condizioni Vittoria', 'Ombra', 'Set', 'Espansione', 'Volte_Giocato'], rows);
     document.getElementById('result').innerHTML += `
       <div class="note-box"><b>Legenda:</b> O = Oscura, P = Pura, M = Mistico, NM = Non Mistico</div>
