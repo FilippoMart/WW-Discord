@@ -100,7 +100,7 @@
   <h2>Statistiche rapide</h2>
   <div class="row">
     <button onclick="showWinRates()">Win % per giocatore</button>
-    <button onclick="showShadowCounts()">Ombra per giocatore</button>
+    <button onclick="showShadowCounts()">Ombra % Giocatore</button>
     <button onclick="showGamesPerPlayer()">Partite giocate per giocatore</button>
     <button onclick="showRolesCatalog()">Catalogo ruoli</button>
   </div>
@@ -201,17 +201,39 @@ function runCustomQuery() {
   }
 }
 
+// Ordina per percentuale decrescente, poi per numeratore decrescente, poi per totale crescente
+function sortByRate(rows, numKey, totalKey) {
+  return rows.slice().sort((a, b) => {
+    const pctA = a[numKey] / a[totalKey];
+    const pctB = b[numKey] / b[totalKey];
+    if (pctB !== pctA) return pctB - pctA;
+    if (b[numKey] !== a[numKey]) return b[numKey] - a[numKey];
+    return a[totalKey] - b[totalKey];
+  });
+}
+
 function showShadowCounts() {
   try {
     const rows = execToObjects(`
-      SELECT a.nick AS Giocatore, COUNT(*) AS Volte_Ombra
+      SELECT a.nick AS nick, r.ombra AS ombra
       FROM assignments a
-      JOIN roles r ON r.ruolo = a.ruolo
-      WHERE r.ombra = 'Ombra'
-      GROUP BY a.nick
-      ORDER BY Volte_Ombra DESC
+      LEFT JOIN roles r ON r.ruolo = a.ruolo
+      WHERE a.ruolo != 'MASTER'
     `);
-    renderRows(['Giocatore', 'Volte_Ombra'], rows);
+    const stats = {};
+    for (const row of rows) {
+      if (!stats[row.nick]) stats[row.nick] = { ombra: 0, total: 0 };
+      stats[row.nick].total += 1;
+      if (row.ombra === 'Ombra') stats[row.nick].ombra += 1;
+    }
+    let result = Object.entries(stats).map(([nick, s]) => ({
+      Giocatore: nick,
+      Volte_Ombra: s.ombra,
+      Partite: s.total,
+      'Ombra %': ((s.ombra / s.total) * 100).toFixed(1) + '%'
+    }));
+    result = sortByRate(result, 'Volte_Ombra', 'Partite');
+    renderRows(['Giocatore', 'Volte_Ombra', 'Partite', 'Ombra %'], result);
   } catch (e) { showError(e); }
 }
 
@@ -273,17 +295,13 @@ function showWinRates() {
       const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
       if (winRoles.includes(row.ruolo)) stats[nick].wins += 1;
     }
-    const result = Object.entries(stats).map(([nick, s]) => ({
+    let result = Object.entries(stats).map(([nick, s]) => ({
       Giocatore: nick,
       Vittorie: s.wins,
       Partite: s.total,
       'Win %': ((s.wins / s.total) * 100).toFixed(1) + '%'
-    })).sort((a, b) => {
-      const pctA = a.Vittorie / a.Partite;
-      const pctB = b.Vittorie / b.Partite;
-      if (pctB !== pctA) return pctB - pctA;
-      return pctA === 0 ? a.Partite - b.Partite : b.Partite - a.Partite;
-    });
+    }));
+    result = sortByRate(result, 'Vittorie', 'Partite');
     renderRows(['Giocatore', 'Vittorie', 'Partite', 'Win %'], result);
   } catch (e) { showError(e); }
 }
