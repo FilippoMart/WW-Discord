@@ -399,21 +399,32 @@ function showMasterCounts() {
     renderRows(['Giocatore', 'Volte_Master'], rows);
 
     const winRows = execToObjects(`
-      SELECT p.nome || ' (' || a.nick || ')' AS Master, gw.win AS Vittoria, COUNT(*) AS Volte
+      SELECT p.nome || ' (' || a.nick || ')' AS Master, gw.win AS Vittoria
       FROM assignments a
       JOIN players p ON p.nick = a.nick
       JOIN game_wins gw ON gw.play = a.play
       WHERE a.ruolo = 'MASTER'
-      GROUP BY a.nick, gw.win
-      ORDER BY Master, Volte DESC
     `);
-    let html = '<div class="table-scroll"><table><thead><tr><th>Master</th><th>Vittoria</th><th>Volte</th></tr></thead><tbody>';
+    const counts = {};
     for (const row of winRows) {
-      html += `<tr><td>${escapeHtml(row.Master)}</td><td>${escapeHtml(row.Vittoria)}</td><td>${row.Volte}</td></tr>`;
+      const factions = (row.Vittoria || '').split(',').map(s => s.trim()).filter(Boolean);
+      if (!counts[row.Master]) counts[row.Master] = {};
+      for (const f of factions) counts[row.Master][f] = (counts[row.Master][f] || 0) + 1;
+    }
+    const breakdown = [];
+    for (const master of Object.keys(counts).sort()) {
+      const factionCounts = Object.entries(counts[master]).sort((a, b) => b[1] - a[1]);
+      for (const [faction, volte] of factionCounts) {
+        breakdown.push({ Master: master, Fazione: faction, Volte: volte });
+      }
+    }
+    let html = '<div class="table-scroll"><table><thead><tr><th>Master</th><th>Fazione</th><th>Volte</th></tr></thead><tbody>';
+    for (const row of breakdown) {
+      html += `<tr><td>${escapeHtml(row.Master)}</td><td>${escapeHtml(row.Fazione)}</td><td>${row.Volte}</td></tr>`;
     }
     html += '</tbody></table></div>';
     document.getElementById('result').innerHTML += `
-      <div class="note-box"><b>Fazioni vincenti per Master:</b> quante volte ogni fazione (dal campo Vittoria) ha vinto nelle partite arbitrate da ciascun master.</div>
+      <div class="note-box"><b>Fazioni vincenti per Master:</b> il campo Vittoria è diviso per virgola, quindi "Villaggio, Mistici" conta come una vittoria per Villaggio e una per Mistici, sommandosi ad altre partite vinte dalla stessa singola fazione.</div>
       ${html}
     `;
   } catch (e) { showError(e); }
