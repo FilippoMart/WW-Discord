@@ -438,7 +438,7 @@ async function init() {
     const buf = await resp.arrayBuffer();
     db = new SQL.Database(new Uint8Array(buf));
 
-    const games = execToObjects('SELECT play FROM games ORDER BY play');
+    const games = execToObjects('SELECT play FROM games ORDER BY play DESC');
     const select = document.getElementById('gameSelect');
     select.innerHTML = games.map(g => `<option value="${g.play}">${g.play}</option>`).join('');
 
