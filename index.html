@@ -263,17 +263,6 @@ function sortByRate(rows, numKey, totalKey) {
   });
 }
 
-// Ordina per percentuale grezza decrescente, poi per numeratore decrescente, poi per totale crescente
-function sortByPercentage(rows, numKey, totalKey) {
-  return rows.slice().sort((a, b) => {
-    const pctA = a[numKey] / a[totalKey];
-    const pctB = b[numKey] / b[totalKey];
-    if (pctB !== pctA) return pctB - pctA;
-    if (b[numKey] !== a[numKey]) return b[numKey] - a[numKey];
-    return a[totalKey] - b[totalKey];
-  });
-}
-
 function showShadowCounts() {
   try {
     const rows = execToObjects(`
@@ -293,10 +282,11 @@ function showShadowCounts() {
       Giocatore: `${s.nome} (${nick})`,
       Volte_Ombra: s.ombra,
       'Partite Giocate': s.total,
-      'Ombra %': ((s.ombra / s.total) * 100).toFixed(1) + '%'
+      'Ombra %': ((s.ombra / s.total) * 100).toFixed(1) + '%',
+      'Wilson Score': wilsonLowerBound(s.ombra, s.total).toFixed(3)
     }));
-    result = sortByPercentage(result, 'Volte_Ombra', 'Partite Giocate');
-    renderRows(['Giocatore', 'Volte_Ombra', 'Partite Giocate', 'Ombra %'], result);
+    result = sortByRate(result, 'Volte_Ombra', 'Partite Giocate');
+    renderRows(['Giocatore', 'Volte_Ombra', 'Partite Giocate', 'Ombra %', 'Wilson Score'], result);
   } catch (e) { showError(e); }
 }
 
