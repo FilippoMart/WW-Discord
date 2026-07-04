@@ -444,6 +444,17 @@ function showMasterCounts() {
 
 // Calcola, per ogni giocatore, la striscia di vittorie/sconfitte più lunga di sempre
 // e la striscia attuale (in corso, cioè quella che finisce con la sua ultima partita giocata).
+// Data una sequenza di booleani (in ordine cronologico), calcola la striscia più lunga
+// di true e quella attuale (cioè quella che finisce con l'ultimo elemento).
+function computeStreakStats(boolResults) {
+  let longestTrue = 0, runTrue = 0;
+  for (const val of boolResults) {
+    runTrue = val ? runTrue + 1 : 0;
+    longestTrue = Math.max(longestTrue, runTrue);
+  }
+  return { longest: longestTrue, current: runTrue };
+}
+
 function computeAllPlayerStreaks() {
   const rows = execToObjects(`
     SELECT a.nick AS nick, p.nome AS nome, a.play AS play, a.ruolo AS ruolo, gw.win_ruoli AS win_ruoli
@@ -461,42 +472,61 @@ function computeAllPlayerStreaks() {
   }
   const streaks = {};
   for (const [nick, s] of Object.entries(byNick)) {
-    let longestWin = 0, longestLoss = 0, runWin = 0, runLoss = 0;
-    for (const won of s.results) {
-      if (won) { runWin++; runLoss = 0; } else { runLoss++; runWin = 0; }
-      longestWin = Math.max(longestWin, runWin);
-      longestLoss = Math.max(longestLoss, runLoss);
-    }
-    streaks[nick] = { nome: s.nome, longestWin, longestLoss, curWin: runWin, curLoss: runLoss };
+    const { longest, current } = computeStreakStats(s.results);
+    streaks[nick] = { nome: s.nome, longestWin: longest, curWin: current };
+  }
+  return streaks;
+}
+
+function computeAllPlayerOmbraStreaks() {
+  const rows = execToObjects(`
+    SELECT a.nick AS nick, p.nome AS nome, a.play AS play, r.ombra AS ombra
+    FROM assignments a
+    JOIN players p ON p.nick = a.nick
+    LEFT JOIN roles r ON r.ruolo = a.ruolo
+    WHERE a.ruolo != 'MASTER'
+    ORDER BY a.nick, a.play
+  `);
+  const byNick = {};
+  for (const row of rows) {
+    if (!byNick[row.nick]) byNick[row.nick] = { nome: row.nome, results: [] };
+    byNick[row.nick].results.push(row.ombra === 'Ombra');
+  }
+  const streaks = {};
+  for (const [nick, s] of Object.entries(byNick)) {
+    const { longest, current } = computeStreakStats(s.results);
+    streaks[nick] = { nome: s.nome, longestOmbra: longest, curOmbra: current };
   }
   return streaks;
 }
 
 function showStreaks() {
   try {
-    const streaks = computeAllPlayerStreaks();
-    const entries = Object.entries(streaks);
+    const winStreaks = computeAllPlayerStreaks();
+    const winEntries = Object.entries(winStreaks);
+    const ombraStreaks = computeAllPlayerOmbraStreaks();
+    const ombraEntries = Object.entries(ombraStreaks);
 
-    function topN(getValue) {
+    function topN(entries, getValue) {
       const max = Math.max(...entries.map(([, s]) => getValue(s)));
       const leaders = entries.filter(([, s]) => getValue(s) === max).map(([nick, s]) => `${s.nome} (${nick})`);
       return { max, leaders: leaders.join(', ') };
     }
 
-    const recordWin = topN(s => s.longestWin);
-    const currentWin = topN(s => s.curWin);
-    const recordLoss = topN(s => s.longestLoss);
-    const currentLoss = topN(s => s.curLoss);
+    const recordWin = topN(winEntries, s => s.longestWin);
+    const currentWin = topN(winEntries, s => s.curWin);
+    const recordOmbra = topN(ombraEntries, s => s.longestOmbra);
+    const currentOmbra = topN(ombraEntries, s => s.curOmbra);
 
     const result = [
       { Categoria: 'Record assoluto vittorie consecutive', Giocatore: recordWin.leaders, Numero: recordWin.max },
       { Categoria: 'Record attuale vittorie consecutive', Giocatore: currentWin.max > 0 ? currentWin.leaders : '—', Numero: currentWin.max },
-      { Categoria: 'Record assoluto sconfitte consecutive', Giocatore: recordLoss.leaders, Numero: recordLoss.max },
-      { Categoria: 'Record attuale sconfitte consecutive', Giocatore: currentLoss.max > 0 ? currentLoss.leaders : '—', Numero: currentLoss.max }
+      { Categoria: 'Record assoluto Ombra consecutive', Giocatore: recordOmbra.leaders, Numero: recordOmbra.max },
+      { Categoria: 'Record attuale Ombra consecutive', Giocatore: currentOmbra.max > 0 ? currentOmbra.leaders : '—', Numero: currentOmbra.max }
     ];
     renderRows(['Categoria', 'Giocatore', 'Numero'], result);
     document.getElementById('result').innerHTML += `
-      <div class="note-box">"Attuale" conta solo se la striscia è ancora aperta, cioè se l'ultima partita giocata da quella persona rientra nella striscia (l'ultima partita in assoluto deve essere una vittoria per lo streak di vittorie, una sconfitta per quello di sconfitte). A parità di numero compaiono più giocatori.</div>
+      <div class="note-box">"Attuale" conta solo se la striscia è ancora aperta, cioè se l'ultima partita giocata da quella persona rientra nella striscia (l'ultima partita in assoluto deve essere una vittoria per lo streak di vittorie, un ruolo Ombra per quello di Ombra). A parità di numero compaiono più giocatori.</div>
     `;
   } catch (e) { showError(e); }
 }
@@ -751,13 +781,13 @@ function showPlayerHistory() {
     }
     html += '</tbody></table></div>';
     const pctVittorie = totalGames > 0 ? (totalWins / totalGames * 100).toFixed(1) : '0.0';
-    const allStreaks = computeAllPlayerStreaks();
-    const myStreak = allStreaks[nick];
-    const streakHtml = myStreak ? `
+    const myStreak = computeAllPlayerStreaks()[nick];
+    const myOmbraStreak = computeAllPlayerOmbraStreaks()[nick];
+    const streakHtml = (myStreak || myOmbraStreak) ? `
       <div class="note-box">
         <b>Streak:</b>
-        record vittorie consecutive: ${myStreak.longestWin} (attuale: ${myStreak.curWin}) —
-        record sconfitte consecutive: ${myStreak.longestLoss} (attuale: ${myStreak.curLoss})
+        record vittorie consecutive: ${myStreak ? myStreak.longestWin : 0} (attuale: ${myStreak ? myStreak.curWin : 0}) —
+        record Ombra consecutive: ${myOmbraStreak ? myOmbraStreak.longestOmbra : 0} (attuale: ${myOmbraStreak ? myOmbraStreak.curOmbra : 0})
       </div>
     ` : '';
 
