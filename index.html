@@ -119,6 +119,7 @@
     <button onclick="showAffezionati()">Affezionati al ruolo</button>
     <button onclick="showMasterCounts()">Master</button>
     <button onclick="showStreaks()">Streak</button>
+    <button onclick="showCompagniVittoria()">Compagni di Vittoria</button>
     <button onclick="showPlayerCountDistribution()">Partite per numero di giocatori</button>
     <button onclick="showRuoliPossibiliDistribution()">Partite per set di ruoli possibili</button>
   </div>
@@ -488,6 +489,51 @@ function showStreaks() {
     renderRows(['Categoria', 'Giocatore', 'Numero'], result);
     document.getElementById('result').innerHTML += `
       <div class="note-box">"Attuale" conta solo se la striscia è ancora aperta, cioè se l'ultima partita giocata da quella persona rientra nella striscia (l'ultima partita in assoluto deve essere una vittoria per lo streak di vittorie, una sconfitta per quello di sconfitte). A parità di numero compaiono più giocatori.</div>
+    `;
+  } catch (e) { showError(e); }
+}
+
+function showCompagniVittoria() {
+  try {
+    const rows = execToObjects(`
+      SELECT a.play AS play, a.nick AS nick, p.nome AS nome, a.ruolo AS ruolo, gw.win_ruoli AS win_ruoli
+      FROM assignments a
+      JOIN players p ON p.nick = a.nick
+      JOIN game_wins gw ON gw.play = a.play
+      WHERE a.ruolo != 'MASTER'
+    `);
+    const byPlay = {};
+    for (const row of rows) {
+      if (!byPlay[row.play]) byPlay[row.play] = [];
+      const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
+      byPlay[row.play].push({ nick: row.nick, nome: row.nome, won: winRoles.includes(row.ruolo) });
+    }
+
+    const pairs = {};
+    for (const players of Object.values(byPlay)) {
+      for (let i = 0; i < players.length; i++) {
+        for (let j = i + 1; j < players.length; j++) {
+          const [a, b] = [players[i], players[j]].sort((x, y) => x.nick.localeCompare(y.nick));
+          const key = a.nick + ' | ' + b.nick;
+          if (!pairs[key]) pairs[key] = { labelA: `${a.nome} (${a.nick})`, labelB: `${b.nome} (${b.nick})`, insieme: 0, vinte: 0 };
+          pairs[key].insieme += 1;
+          if (a.won && b.won) pairs[key].vinte += 1;
+        }
+      }
+    }
+
+    const result = Object.values(pairs).map(p => ({
+      Coppia: `${p.labelA} & ${p.labelB}`,
+      'Partite Insieme': p.insieme,
+      'Vittorie Insieme': p.vinte,
+      '% Win Insieme': p.insieme > 0 ? (p.vinte / p.insieme * 100).toFixed(1) + '%' : '0.0%',
+      'Wilson Score': wilsonLowerBound(p.vinte, p.insieme).toFixed(3),
+      _wilson: wilsonLowerBound(p.vinte, p.insieme)
+    })).sort((a, b) => b._wilson - a._wilson);
+
+    renderRows(['Coppia', 'Partite Insieme', 'Vittorie Insieme', '% Win Insieme', 'Wilson Score'], result);
+    document.getElementById('result').innerHTML += `
+      <div class="note-box">Per ogni coppia di giocatori che ha giocato almeno una partita insieme: quante volte hanno vinto <i>entrambi</i> nella stessa partita, rispetto a quante partite hanno giocato insieme (non rispetto al totale vittorie di ciascuno). Ordinata per Wilson Score per non premiare coppie con una sola partita insieme fortunata.</div>
     `;
   } catch (e) { showError(e); }
 }
