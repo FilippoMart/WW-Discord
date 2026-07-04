@@ -117,6 +117,7 @@
     <button onclick="showShadowCounts()">% Ombra</button>
     <button onclick="showCattivoCounts()">% Cattivo</button>
     <button onclick="showRolesCatalog()">Ruoli e Condizioni (RC)</button>
+    <button onclick="showRoleRanking()">Ranking Ruoli per Win %</button>
     <button onclick="showAffezionati()">Affezionati al ruolo</button>
     <button onclick="showStreaks()">Streak</button>
     <button onclick="showMasterCounts()">Master</button>
@@ -355,6 +356,36 @@ function showRolesCatalog() {
         <a href="docs/RuoliTreLune.pdf" target="_blank">Ruoli 3 Lune</a> ·
         <a href="docs/RegoleTreLune.pdf" target="_blank">Regole 3 Lune</a>
       </div>
+    `;
+  } catch (e) { showError(e); }
+}
+
+function showRoleRanking() {
+  try {
+    const rows = execToObjects(`
+      SELECT a.ruolo AS ruolo, gw.win_ruoli AS win_ruoli
+      FROM assignments a
+      JOIN game_wins gw ON gw.play = a.play
+      WHERE a.ruolo != 'MASTER'
+    `);
+    const stats = {};
+    for (const row of rows) {
+      if (!stats[row.ruolo]) stats[row.ruolo] = { giocate: 0, vinte: 0 };
+      stats[row.ruolo].giocate += 1;
+      const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
+      if (winRoles.includes(row.ruolo)) stats[row.ruolo].vinte += 1;
+    }
+    const result = Object.entries(stats).map(([ruolo, s]) => ({
+      Ruolo: ruolo,
+      Giocate: s.giocate,
+      Vinte: s.vinte,
+      'Win %': (s.vinte / s.giocate * 100).toFixed(1) + '%',
+      'Wilson Score': wilsonLowerBound(s.vinte, s.giocate).toFixed(3),
+      _wilson: wilsonLowerBound(s.vinte, s.giocate)
+    })).sort((a, b) => b._wilson - a._wilson);
+    renderRows(['Ruolo', 'Giocate', 'Vinte', 'Win %', 'Wilson Score'], result);
+    document.getElementById('result').innerHTML += `
+      <div class="note-box">Tasso di vittoria aggregato per ciascun ruolo (su tutti i giocatori che l'hanno interpretato), ordinato per Wilson Score. Solo i ruoli giocati almeno una volta compaiono qui.</div>
     `;
   } catch (e) { showError(e); }
 }
