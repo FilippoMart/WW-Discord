@@ -115,6 +115,7 @@
     <button onclick="showWinRates()">% Vittorie</button>
     <button onclick="showUnderdogWin()">Underdog Win</button>
     <button onclick="showShadowCounts()">% Ombra</button>
+    <button onclick="showCattivoCounts()">% Cattivo</button>
     <button onclick="showRolesCatalog()">Ruoli e Condizioni (RC)</button>
     <button onclick="showAffezionati()">Affezionati al ruolo</button>
     <button onclick="showStreaks()">Streak</button>
@@ -287,6 +288,36 @@ function showShadowCounts() {
     }));
     result = sortByRate(result, 'Volte_Ombra', 'Partite Giocate');
     renderRows(['Giocatore', 'Volte_Ombra', 'Partite Giocate', 'Ombra %', 'Wilson Score'], result);
+  } catch (e) { showError(e); }
+}
+
+function showCattivoCounts() {
+  try {
+    const rows = execToObjects(`
+      SELECT a.nick AS nick, p.nome AS nome, r.ombra AS ombra
+      FROM assignments a
+      JOIN players p ON p.nick = a.nick
+      LEFT JOIN roles r ON r.ruolo = a.ruolo
+      WHERE a.ruolo != 'MASTER'
+    `);
+    const stats = {};
+    for (const row of rows) {
+      if (!stats[row.nick]) stats[row.nick] = { nome: row.nome, cattivo: 0, total: 0 };
+      stats[row.nick].total += 1;
+      if (row.ombra === 'Ombra' || row.ombra === 'Aiutante') stats[row.nick].cattivo += 1;
+    }
+    let result = Object.entries(stats).map(([nick, s]) => ({
+      Giocatore: `${s.nome} (${nick})`,
+      Volte_Cattivo: s.cattivo,
+      'Partite Giocate': s.total,
+      'Cattivo %': ((s.cattivo / s.total) * 100).toFixed(1) + '%',
+      'Wilson Score': wilsonLowerBound(s.cattivo, s.total).toFixed(3)
+    }));
+    result = sortByRate(result, 'Volte_Cattivo', 'Partite Giocate');
+    renderRows(['Giocatore', 'Volte_Cattivo', 'Partite Giocate', 'Cattivo %', 'Wilson Score'], result);
+    document.getElementById('result').innerHTML += `
+      <div class="note-box"><b>Cattivo</b> = ruoli Ombra + Aiutante (Traditore, Ghoul, Megera): chi è dalla parte oscura o la aiuta, non solo chi è "Ombra" in senso stretto.</div>
+    `;
   } catch (e) { showError(e); }
 }
 
@@ -500,12 +531,36 @@ function computeAllPlayerOmbraStreaks() {
   return streaks;
 }
 
+function computeAllPlayerCattivoStreaks() {
+  const rows = execToObjects(`
+    SELECT a.nick AS nick, p.nome AS nome, a.play AS play, r.ombra AS ombra
+    FROM assignments a
+    JOIN players p ON p.nick = a.nick
+    LEFT JOIN roles r ON r.ruolo = a.ruolo
+    WHERE a.ruolo != 'MASTER'
+    ORDER BY a.nick, a.play
+  `);
+  const byNick = {};
+  for (const row of rows) {
+    if (!byNick[row.nick]) byNick[row.nick] = { nome: row.nome, results: [] };
+    byNick[row.nick].results.push(row.ombra === 'Ombra' || row.ombra === 'Aiutante');
+  }
+  const streaks = {};
+  for (const [nick, s] of Object.entries(byNick)) {
+    const { longest, current } = computeStreakStats(s.results);
+    streaks[nick] = { nome: s.nome, longestCattivo: longest, curCattivo: current };
+  }
+  return streaks;
+}
+
 function showStreaks() {
   try {
     const winStreaks = computeAllPlayerStreaks();
     const winEntries = Object.entries(winStreaks);
     const ombraStreaks = computeAllPlayerOmbraStreaks();
     const ombraEntries = Object.entries(ombraStreaks);
+    const cattivoStreaks = computeAllPlayerCattivoStreaks();
+    const cattivoEntries = Object.entries(cattivoStreaks);
 
     function topN(entries, getValue) {
       const max = Math.max(...entries.map(([, s]) => getValue(s)));
@@ -517,16 +572,20 @@ function showStreaks() {
     const currentWin = topN(winEntries, s => s.curWin);
     const recordOmbra = topN(ombraEntries, s => s.longestOmbra);
     const currentOmbra = topN(ombraEntries, s => s.curOmbra);
+    const recordCattivo = topN(cattivoEntries, s => s.longestCattivo);
+    const currentCattivo = topN(cattivoEntries, s => s.curCattivo);
 
     const result = [
       { Categoria: 'Record assoluto vittorie consecutive', Giocatore: recordWin.leaders, Numero: recordWin.max },
       { Categoria: 'Record attuale vittorie consecutive', Giocatore: currentWin.max > 0 ? currentWin.leaders : '—', Numero: currentWin.max },
       { Categoria: 'Record assoluto Ombra consecutive', Giocatore: recordOmbra.leaders, Numero: recordOmbra.max },
-      { Categoria: 'Record attuale Ombra consecutive', Giocatore: currentOmbra.max > 0 ? currentOmbra.leaders : '—', Numero: currentOmbra.max }
+      { Categoria: 'Record attuale Ombra consecutive', Giocatore: currentOmbra.max > 0 ? currentOmbra.leaders : '—', Numero: currentOmbra.max },
+      { Categoria: 'Record assoluto Cattivo consecutive', Giocatore: recordCattivo.leaders, Numero: recordCattivo.max },
+      { Categoria: 'Record attuale Cattivo consecutive', Giocatore: currentCattivo.max > 0 ? currentCattivo.leaders : '—', Numero: currentCattivo.max }
     ];
     renderRows(['Categoria', 'Giocatore', 'Numero'], result);
     document.getElementById('result').innerHTML += `
-      <div class="note-box">"Attuale" conta solo se la striscia è ancora aperta, cioè se l'ultima partita giocata da quella persona rientra nella striscia (l'ultima partita in assoluto deve essere una vittoria per lo streak di vittorie, un ruolo Ombra per quello di Ombra). A parità di numero compaiono più giocatori.</div>
+      <div class="note-box">"Attuale" conta solo se la striscia è ancora aperta, cioè se l'ultima partita giocata da quella persona rientra nella striscia (l'ultima partita in assoluto deve essere una vittoria per lo streak di vittorie, un ruolo Ombra per quello di Ombra, Ombra o Aiutante per quello di Cattivo). A parità di numero compaiono più giocatori.</div>
     `;
   } catch (e) { showError(e); }
 }
@@ -783,11 +842,13 @@ function showPlayerHistory() {
     const pctVittorie = totalGames > 0 ? (totalWins / totalGames * 100).toFixed(1) : '0.0';
     const myStreak = computeAllPlayerStreaks()[nick];
     const myOmbraStreak = computeAllPlayerOmbraStreaks()[nick];
-    const streakHtml = (myStreak || myOmbraStreak) ? `
+    const myCattivoStreak = computeAllPlayerCattivoStreaks()[nick];
+    const streakHtml = (myStreak || myOmbraStreak || myCattivoStreak) ? `
       <div class="note-box">
         <b>Streak:</b>
         record vittorie consecutive: ${myStreak ? myStreak.longestWin : 0} (attuale: ${myStreak ? myStreak.curWin : 0}) —
-        record Ombra consecutive: ${myOmbraStreak ? myOmbraStreak.longestOmbra : 0} (attuale: ${myOmbraStreak ? myOmbraStreak.curOmbra : 0})
+        record Ombra consecutive: ${myOmbraStreak ? myOmbraStreak.longestOmbra : 0} (attuale: ${myOmbraStreak ? myOmbraStreak.curOmbra : 0}) —
+        record Cattivo consecutive: ${myCattivoStreak ? myCattivoStreak.longestCattivo : 0} (attuale: ${myCattivoStreak ? myCattivoStreak.curCattivo : 0})
       </div>
     ` : '';
 
