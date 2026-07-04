@@ -118,8 +118,6 @@
     <button onclick="showRolesCatalog()">Ruoli e Condizioni (RC)</button>
     <button onclick="showAffezionati()">Affezionati al ruolo</button>
     <button onclick="showStreaks()">Streak</button>
-    <button onclick="showCompagniVittoria()">Compagni di Vittoria</button>
-    <button onclick="showCompagniSconfitte()">Compagni di Sconfitte</button>
     <button onclick="showMasterCounts()">Master</button>
     <button onclick="showPlayerCountDistribution()">Partite per numero di giocatori</button>
     <button onclick="showRuoliPossibiliDistribution()">Partite per set di ruoli possibili</button>
@@ -531,36 +529,6 @@ function computeCompagniStats() {
     }
   }
   return pairs;
-}
-
-function renderCompagniTable(pairs, successKey, label) {
-  const result = Object.values(pairs).map(p => ({
-    Coppia: `${p.labelA} & ${p.labelB}`,
-    'Partite Insieme': p.insieme,
-    [label]: p[successKey],
-    [`% ${label}`]: p.insieme > 0 ? (p[successKey] / p.insieme * 100).toFixed(1) + '%' : '0.0%',
-    'Wilson Score': wilsonLowerBound(p[successKey], p.insieme).toFixed(3),
-    _wilson: wilsonLowerBound(p[successKey], p.insieme)
-  })).sort((a, b) => b._wilson - a._wilson);
-  renderRows(['Coppia', 'Partite Insieme', label, `% ${label}`, 'Wilson Score'], result);
-}
-
-function showCompagniVittoria() {
-  try {
-    renderCompagniTable(computeCompagniStats(), 'vinteInsieme', 'Vittorie Insieme');
-    document.getElementById('result').innerHTML += `
-      <div class="note-box">Per ogni coppia di giocatori che ha giocato almeno una partita insieme: quante volte hanno vinto <i>entrambi</i> nella stessa partita, rispetto a quante partite hanno giocato insieme (non rispetto al totale vittorie di ciascuno). Ordinata per Wilson Score per non premiare coppie con una sola partita insieme fortunata.</div>
-    `;
-  } catch (e) { showError(e); }
-}
-
-function showCompagniSconfitte() {
-  try {
-    renderCompagniTable(computeCompagniStats(), 'perseInsieme', 'Sconfitte Insieme');
-    document.getElementById('result').innerHTML += `
-      <div class="note-box">Per ogni coppia di giocatori che ha giocato almeno una partita insieme: quante volte hanno perso <i>entrambi</i> nella stessa partita, rispetto a quante partite hanno giocato insieme. Ordinata per Wilson Score per non premiare coppie con una sola partita insieme sfortunata.</div>
-    `;
-  } catch (e) { showError(e); }
 }
 
 function showUnderdogWin() {
