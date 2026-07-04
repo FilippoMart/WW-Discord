@@ -118,6 +118,7 @@
     <button onclick="showRolesCatalog()">Ruoli e Condizioni (RC)</button>
     <button onclick="showAffezionati()">Affezionati al ruolo</button>
     <button onclick="showMasterCounts()">Master</button>
+    <button onclick="showStreaks()">Streak</button>
     <button onclick="showPlayerCountDistribution()">Partite per numero di giocatori</button>
     <button onclick="showRuoliPossibiliDistribution()">Partite per set di ruoli possibili</button>
   </div>
@@ -432,6 +433,65 @@ function showMasterCounts() {
   } catch (e) { showError(e); }
 }
 
+// Calcola, per ogni giocatore, la striscia di vittorie/sconfitte più lunga di sempre
+// e la striscia attuale (in corso, cioè quella che finisce con la sua ultima partita giocata).
+function computeAllPlayerStreaks() {
+  const rows = execToObjects(`
+    SELECT a.nick AS nick, p.nome AS nome, a.play AS play, a.ruolo AS ruolo, gw.win_ruoli AS win_ruoli
+    FROM assignments a
+    JOIN players p ON p.nick = a.nick
+    JOIN game_wins gw ON gw.play = a.play
+    WHERE a.ruolo != 'MASTER'
+    ORDER BY a.nick, a.play
+  `);
+  const byNick = {};
+  for (const row of rows) {
+    if (!byNick[row.nick]) byNick[row.nick] = { nome: row.nome, results: [] };
+    const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
+    byNick[row.nick].results.push(winRoles.includes(row.ruolo));
+  }
+  const streaks = {};
+  for (const [nick, s] of Object.entries(byNick)) {
+    let longestWin = 0, longestLoss = 0, runWin = 0, runLoss = 0;
+    for (const won of s.results) {
+      if (won) { runWin++; runLoss = 0; } else { runLoss++; runWin = 0; }
+      longestWin = Math.max(longestWin, runWin);
+      longestLoss = Math.max(longestLoss, runLoss);
+    }
+    streaks[nick] = { nome: s.nome, longestWin, longestLoss, curWin: runWin, curLoss: runLoss };
+  }
+  return streaks;
+}
+
+function showStreaks() {
+  try {
+    const streaks = computeAllPlayerStreaks();
+    const entries = Object.entries(streaks);
+
+    function topN(getValue) {
+      const max = Math.max(...entries.map(([, s]) => getValue(s)));
+      const leaders = entries.filter(([, s]) => getValue(s) === max).map(([nick, s]) => `${s.nome} (${nick})`);
+      return { max, leaders: leaders.join(', ') };
+    }
+
+    const recordWin = topN(s => s.longestWin);
+    const currentWin = topN(s => s.curWin);
+    const recordLoss = topN(s => s.longestLoss);
+    const currentLoss = topN(s => s.curLoss);
+
+    const result = [
+      { Categoria: 'Record assoluto vittorie consecutive', Giocatore: recordWin.leaders, Numero: recordWin.max },
+      { Categoria: 'Record attuale vittorie consecutive', Giocatore: currentWin.max > 0 ? currentWin.leaders : '—', Numero: currentWin.max },
+      { Categoria: 'Record assoluto sconfitte consecutive', Giocatore: recordLoss.leaders, Numero: recordLoss.max },
+      { Categoria: 'Record attuale sconfitte consecutive', Giocatore: currentLoss.max > 0 ? currentLoss.leaders : '—', Numero: currentLoss.max }
+    ];
+    renderRows(['Categoria', 'Giocatore', 'Numero'], result);
+    document.getElementById('result').innerHTML += `
+      <div class="note-box">"Attuale" conta solo se la striscia è ancora aperta, cioè se l'ultima partita giocata da quella persona rientra nella striscia (l'ultima partita in assoluto deve essere una vittoria per lo streak di vittorie, una sconfitta per quello di sconfitte). A parità di numero compaiono più giocatori.</div>
+    `;
+  } catch (e) { showError(e); }
+}
+
 function showUnderdogWin() {
   try {
     const gameRows = execToObjects(`
@@ -658,6 +718,18 @@ function showPlayerHistory() {
         Un ruolo con esattamente questa combinazione di fazioni conta solo per la condizione composta corrispondente, non per i singoli token.
       </div>
     `;
+
+    const allStreaks = computeAllPlayerStreaks();
+    const myStreak = allStreaks[nick];
+    if (myStreak) {
+      document.getElementById('result').innerHTML += `
+        <div class="note-box">
+          <b>Streak:</b>
+          record vittorie consecutive: ${myStreak.longestWin} (attuale: ${myStreak.curWin}) —
+          record sconfitte consecutive: ${myStreak.longestLoss} (attuale: ${myStreak.curLoss})
+        </div>
+      `;
+    }
   } catch (e) { showError(e); }
 }
 
