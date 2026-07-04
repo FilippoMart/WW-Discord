@@ -283,12 +283,12 @@ function showShadowCounts() {
     let result = Object.entries(stats).map(([nick, s]) => ({
       Giocatore: `${s.nome} (${nick})`,
       Volte_Ombra: s.ombra,
-      'Partite Giocate': s.total,
+      'Giocate': s.total,
       'Ombra %': ((s.ombra / s.total) * 100).toFixed(1) + '%',
       'Wilson Score': wilsonLowerBound(s.ombra, s.total).toFixed(3)
     }));
-    result = sortByRate(result, 'Volte_Ombra', 'Partite Giocate');
-    renderRows(['Giocatore', 'Volte_Ombra', 'Partite Giocate', 'Ombra %', 'Wilson Score'], result);
+    result = sortByRate(result, 'Volte_Ombra', 'Giocate');
+    renderRows(['Giocatore', 'Volte_Ombra', 'Giocate', 'Ombra %', 'Wilson Score'], result);
   } catch (e) { showError(e); }
 }
 
@@ -310,12 +310,12 @@ function showCattivoCounts() {
     let result = Object.entries(stats).map(([nick, s]) => ({
       Giocatore: `${s.nome} (${nick})`,
       Volte_Cattivo: s.cattivo,
-      'Partite Giocate': s.total,
+      'Giocate': s.total,
       'Cattivo %': ((s.cattivo / s.total) * 100).toFixed(1) + '%',
       'Wilson Score': wilsonLowerBound(s.cattivo, s.total).toFixed(3)
     }));
-    result = sortByRate(result, 'Volte_Cattivo', 'Partite Giocate');
-    renderRows(['Giocatore', 'Volte_Cattivo', 'Partite Giocate', 'Cattivo %', 'Wilson Score'], result);
+    result = sortByRate(result, 'Volte_Cattivo', 'Giocate');
+    renderRows(['Giocatore', 'Volte_Cattivo', 'Giocate', 'Cattivo %', 'Wilson Score'], result);
     document.getElementById('result').innerHTML += `
       <div class="note-box"><b>Cattivo</b> = ruoli Ombra + Aiutante (Traditore, Ghoul, Megera): chi è dalla parte oscura o la aiuta, non solo chi è "Ombra" in senso stretto.</div>
     `;
@@ -458,12 +458,12 @@ function showAffezionati() {
           Ruolo: ruolo,
           Giocatore: `${nomeByNick[e.nick]} (${e.nick})`,
           Volte: e.count,
-          'Partite Giocate': e.total,
+          'Giocate': e.total,
           Percentuale: (e.pct * 100).toFixed(1) + '%'
         });
       }
     }
-    renderRows(['Ruolo', 'Giocatore', 'Volte', 'Partite Giocate', 'Percentuale'], result);
+    renderRows(['Ruolo', 'Giocatore', 'Volte', 'Giocate', 'Percentuale'], result);
     document.getElementById('result').innerHTML += `
       <div class="note-box">Per ogni ruolo giocato almeno 3 volte dalla stessa persona, mostra chi lo ha interpretato con la percentuale più alta rispetto alle proprie partite giocate (a pari merito compaiono più giocatori).</div>
     `;
@@ -493,14 +493,14 @@ function showMasterCounts() {
     }
     const OMBRE_FAZIONI = ['Capobranco', 'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Negromante', 'Nosferatu', 'Posseduto'];
     const breakdown = Object.keys(stats).sort().map(master => {
-      const entry = { Master: master, Games: stats[master].total };
+      const entry = { Master: master, Giocate: stats[master].total };
       const ombre = OMBRE_FAZIONI.reduce((sum, f) => sum + (stats[master].factions[f] || 0), 0);
       entry.Umani = stats[master].total - ombre;
       entry.Ombre = ombre;
       for (const f of FAZIONI) entry[f] = stats[master].factions[f] || 0;
       return entry;
     });
-    renderRows(['Master', 'Games', 'Umani', 'Ombre', ...FAZIONI], breakdown);
+    renderRows(['Master', 'Giocate', 'Umani', 'Ombre', ...FAZIONI], breakdown);
   } catch (e) { showError(e); }
 }
 
@@ -735,13 +735,13 @@ function showWinRates() {
     }
     let result = Object.entries(stats).map(([nick, s]) => ({
       Giocatore: `${s.nome} (${nick})`,
-      Win: s.wins,
-      Games: s.total,
+      Vinte: s.wins,
+      Giocate: s.total,
       'Win %': ((s.wins / s.total) * 100).toFixed(1) + '%',
       'Wilson Score': wilsonLowerBound(s.wins, s.total).toFixed(3)
     }));
-    result = sortByRate(result, 'Win', 'Games');
-    renderRows(['Giocatore', 'Win', 'Games', 'Win %', 'Wilson Score'], result);
+    result = sortByRate(result, 'Vinte', 'Giocate');
+    renderRows(['Giocatore', 'Vinte', 'Giocate', 'Win %', 'Wilson Score'], result);
   } catch (e) { showError(e); }
 }
 
