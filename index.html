@@ -555,17 +555,20 @@ function showUnderdogWin() {
     for (const row of assignRows) {
       const info = gameInfo[row.play];
       if (!info || info.N === 0) continue;
-      if (!stats[row.nick]) stats[row.nick] = { nome: row.nome, partite: 0, exclusivities: [], successes: 0, trials: 0 };
+      if (!stats[row.nick]) stats[row.nick] = { nome: row.nome, partite: 0, vittorie: 0, exclusivities: [], successes: 0, trials: 0 };
       const s = stats[row.nick];
       s.partite += 1;
       s.trials += info.N; // ogni partita giocata conta nel denominatore, non solo le vittorie
       if (info.winRoles.includes(row.ruolo)) {
+        s.vittorie += 1;
         s.exclusivities.push(1 - info.W / info.N);
         s.successes += info.N - info.W;
+      } else {
+        s.exclusivities.push(0); // una sconfitta conta come 0% di esclusività, non viene ignorata
       }
     }
 
-    let result = Object.entries(stats).filter(([, s]) => s.exclusivities.length > 0).map(([nick, s]) => {
+    let result = Object.entries(stats).filter(([, s]) => s.vittorie > 0).map(([nick, s]) => {
       const media = s.exclusivities.reduce((a, b) => a + b, 0) / s.exclusivities.length;
       return {
         Giocatore: `${s.nome} (${nick})`,
@@ -583,7 +586,7 @@ function showUnderdogWin() {
         Quanto sei stato "underdog" nelle tue vittorie, cioè quanto eri in minoranza tra chi ha vinto.<br><br>
         <b>Giocatori Battuti:</b> quante persone in totale erano escluse dai gruppi vincenti nelle tue vittorie (sommate su tutte le vittorie).<br>
         <b>Giocatori Affrontati:</b> quante persone in totale hai incontrato in <i>tutte</i> le partite giocate, vinte o perse.<br>
-        <b>Underdog %:</b> la media semplice, partita per partita, di quanti giocatori erano esclusi dal gruppo vincente (es. vinci in 2 su 10 giocatori → 80%, vinci in 8 su 10 → 20%).<br>
+        <b>Underdog %:</b> la media, partita per partita su <i>tutte</i> le partite giocate, di quanti giocatori erano esclusi dal gruppo vincente (es. vinci in 2 su 10 giocatori → 80%, vinci in 8 su 10 → 20%). Le sconfitte contano come 0%, quindi una singola vittoria molto esclusiva in mezzo a tante sconfitte non gonfia il numero.<br>
         <b>Wilson Score</b> = rapporto tra Giocatori Battuti e Giocatori Affrontati, corretto per la dimensione del campione: è esattamente il criterio di ordinamento, così vincere spesso in minoranza batte una singola vittoria fortunata su poche partite giocate.
       </div>
     `;
