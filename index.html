@@ -564,7 +564,7 @@ function showStreaks() {
 
     function topN(entries, getValue) {
       const max = Math.max(...entries.map(([, s]) => getValue(s)));
-      const leaders = entries.filter(([, s]) => getValue(s) === max).map(([nick, s]) => `${s.nome} (${nick})`);
+      const leaders = entries.filter(([, s]) => getValue(s) === max).map(([, s]) => s.nome);
       return { max, leaders: leaders.join(', ') };
     }
 
