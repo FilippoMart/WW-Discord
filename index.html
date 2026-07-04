@@ -113,13 +113,13 @@
   <h2>Statistiche rapide</h2>
   <div class="row">
     <button onclick="showWinRates()">% Vittorie</button>
-    <button onclick="showUnderdogWin()">Underdog Win</button>
+    <button onclick="showUnderdogWin()">% Underdog</button>
     <button onclick="showShadowCounts()">% Ombra</button>
     <button onclick="showCattivoCounts()">% Cattivo</button>
     <button onclick="showRolesCatalog()">Ruoli e Condizioni (RC)</button>
-    <button onclick="showRoleRanking()">Ranking Ruoli per Win %</button>
+    <button onclick="showRoleRanking()">Ranking Ruoli</button>
     <button onclick="showAffezionati()">Affezionati al ruolo</button>
-    <button onclick="showStreaks()">Streak</button>
+    <button onclick="showStreaks()">Serie</button>
     <button onclick="showMasterCounts()">Master</button>
     <button onclick="showPlayerCountDistribution()">Partite per numero di giocatori</button>
     <button onclick="showRuoliPossibiliDistribution()">Partite per set di ruoli possibili</button>
@@ -698,18 +698,18 @@ function showUnderdogWin() {
       Giocatore: `${s.nome} (${nick})`,
       'Giocatori Battuti': s.successes,
       'Giocatori Affrontati': s.trials,
-      'Underdog %': (s.successes / s.trials * 100).toFixed(1) + '%',
+      '% Underdog': (s.successes / s.trials * 100).toFixed(1) + '%',
       'Wilson Score': wilsonLowerBound(s.successes, s.trials).toFixed(3),
       _wilson: wilsonLowerBound(s.successes, s.trials)
     }));
     result.sort((a, b) => b._wilson - a._wilson || b['Giocatori Battuti'] - a['Giocatori Battuti'] || a['Giocatori Affrontati'] - b['Giocatori Affrontati']);
-    renderRows(['Giocatore', 'Giocatori Battuti', 'Giocatori Affrontati', 'Underdog %', 'Wilson Score'], result);
+    renderRows(['Giocatore', 'Giocatori Battuti', 'Giocatori Affrontati', '% Underdog', 'Wilson Score'], result);
     document.getElementById('result').innerHTML += `
       <div class="note-box">
         Quanto sei stato "underdog" nelle tue vittorie, cioè quanto eri in minoranza tra chi ha vinto.<br><br>
         <b>Giocatori Battuti:</b> quante persone in totale erano escluse dai gruppi vincenti nelle tue vittorie (sommate su tutte le vittorie).<br>
         <b>Giocatori Affrontati:</b> quante persone in totale hai incontrato in <i>tutte</i> le partite giocate, vinte o perse.<br>
-        <b>Underdog %</b> = Giocatori Battuti / Giocatori Affrontati: le sconfitte contano (aggiungono al denominatore senza aggiungere al numeratore), quindi una singola vittoria molto esclusiva in mezzo a tante sconfitte non gonfia il numero.<br>
+        <b>% Underdog</b> = Giocatori Battuti / Giocatori Affrontati: le sconfitte contano (aggiungono al denominatore senza aggiungere al numeratore), quindi una singola vittoria molto esclusiva in mezzo a tante sconfitte non gonfia il numero.<br>
         <b>Wilson Score</b> = stessa frazione, corretta per la dimensione del campione: è il criterio di ordinamento, così vincere spesso in minoranza batte una singola vittoria fortunata su poche partite giocate.
       </div>
     `;
