@@ -205,9 +205,19 @@ function execToObjects(sql, params = []) {
   return rows;
 }
 
+function isWriteQuery(sql) {
+  return /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|REPLACE|TRUNCATE|ATTACH|DETACH)\b/i.test(sql);
+}
+
 function runCustomQuery() {
   const sql = document.getElementById('sqlBox').value.trim();
   if (!sql) return;
+  if (isWriteQuery(sql)) {
+    document.getElementById('result').innerHTML = `
+      <div class="note-box">Le query di scrittura (INSERT/UPDATE/DELETE/DROP/...) non sono permesse qui. Questo box è pensato solo per interrogare i dati (SELECT), non per modificarli.</div>
+    `;
+    return;
+  }
   try {
     const res = db.exec(sql);
     if (res.length === 0) {
