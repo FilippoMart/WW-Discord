@@ -383,7 +383,7 @@ function showRoleRanking() {
       'Wilson Score': wilsonLowerBound(s.vinte, s.giocate).toFixed(3),
       _wilson: wilsonLowerBound(s.vinte, s.giocate)
     })).sort((a, b) => b._wilson - a._wilson);
-    renderRows(['Ruolo', 'Giocate', 'Vinte', 'Win %', 'Wilson Score'], result);
+    renderRows(['Ruolo', 'Vinte', 'Giocate', 'Win %', 'Wilson Score'], result);
     document.getElementById('result').innerHTML += `
       <div class="note-box">Tasso di vittoria aggregato per ciascun ruolo (su tutti i giocatori che l'hanno interpretato), ordinato per Wilson Score. Solo i ruoli giocati almeno una volta compaiono qui.</div>
     `;
