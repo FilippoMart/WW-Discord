@@ -98,6 +98,28 @@
   }
   .note-box a { color: var(--accent); }
   .note-box a:hover { color: var(--accent-dark); }
+  .autocomplete-wrap { position: relative; }
+  .suggestions {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background: #10121a;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 10;
+    min-width: 100%;
+  }
+  .suggestions div {
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+  .suggestions div:hover { background: var(--accent); color: #10121a; }
 </style>
 </head>
 <body>
@@ -129,8 +151,10 @@
 <div class="panel">
   <h2>Composizione partita</h2>
   <div class="row">
-    <input id="gameSelect" list="gameOptions" placeholder="Cerca o scegli una partita...">
-    <datalist id="gameOptions"></datalist>
+    <div class="autocomplete-wrap">
+      <input id="gameSelect" placeholder="Cerca o scegli una partita..." autocomplete="off">
+      <div id="gameSuggestions" class="suggestions"></div>
+    </div>
     <button onclick="showGameComposition()">Mostra composizione</button>
   </div>
 </div>
@@ -167,6 +191,7 @@
 <script src="https://sql.js.org/dist/sql-wasm.js"></script>
 <script>
 let db = null;
+let allGames = [];
 
 function setStatus(msg) {
   document.getElementById('status').textContent = msg;
@@ -951,6 +976,38 @@ function showRoleHistory() {
   } catch (e) { showError(e); }
 }
 
+function renderGameSuggestions(filter) {
+  const box = document.getElementById('gameSuggestions');
+  const filtered = filter
+    ? allGames.filter(g => g.toLowerCase().includes(filter.toLowerCase()))
+    : allGames;
+  if (filtered.length === 0) {
+    box.style.display = 'none';
+    return;
+  }
+  box.innerHTML = filtered.map(g => `<div data-value="${escapeHtml(g)}">${escapeHtml(g)}</div>`).join('');
+  box.style.display = 'block';
+}
+
+function setupGameSearch() {
+  const input = document.getElementById('gameSelect');
+  const box = document.getElementById('gameSuggestions');
+  input.addEventListener('input', () => renderGameSuggestions(input.value));
+  input.addEventListener('focus', () => renderGameSuggestions(input.value));
+  box.addEventListener('click', (e) => {
+    const target = e.target.closest('[data-value]');
+    if (target) {
+      input.value = target.getAttribute('data-value');
+      box.style.display = 'none';
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#gameSelect') && !e.target.closest('#gameSuggestions')) {
+      box.style.display = 'none';
+    }
+  });
+}
+
 async function init() {
   try {
     setStatus('Caricamento motore SQL...');
@@ -962,9 +1019,9 @@ async function init() {
     db = new SQL.Database(new Uint8Array(buf));
 
     const games = execToObjects('SELECT play FROM games ORDER BY play DESC');
-    const gameOptions = document.getElementById('gameOptions');
-    gameOptions.innerHTML = games.map(g => `<option value="${g.play}">`).join('');
-    document.getElementById('gameSelect').value = games.length ? games[0].play : '';
+    allGames = games.map(g => g.play);
+    document.getElementById('gameSelect').value = allGames.length ? allGames[0] : '';
+    setupGameSearch();
 
     const players = execToObjects('SELECT nick, nome FROM players ORDER BY nome, nick');
     const playerSelect = document.getElementById('playerSelect');
