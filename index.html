@@ -45,7 +45,7 @@
     font-size: 0.9rem;
   }
   button:hover { background: var(--accent-dark); }
-  select, textarea {
+  select, textarea, input[type="text"], input:not([type]) {
     background: #10121a;
     color: var(--text);
     border: 1px solid var(--border);
@@ -127,7 +127,8 @@
 <div class="panel">
   <h2>Composizione partita</h2>
   <div class="row">
-    <select id="gameSelect"></select>
+    <input id="gameSelect" list="gameOptions" placeholder="Cerca o scegli una partita...">
+    <datalist id="gameOptions"></datalist>
     <button onclick="showGameComposition()">Mostra composizione</button>
   </div>
 </div>
@@ -137,6 +138,14 @@
   <div class="row">
     <select id="playerSelect"></select>
     <button onclick="showPlayerHistory()">Mostra storico</button>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Storico per Ruolo</h2>
+  <div class="row">
+    <select id="roleSelect"></select>
+    <button onclick="showRoleHistory()">Mostra storico ruolo</button>
   </div>
 </div>
 
@@ -800,6 +809,36 @@ function showPlayerHistory() {
   } catch (e) { showError(e); }
 }
 
+function showRoleHistory() {
+  const ruolo = document.getElementById('roleSelect').value;
+  if (!ruolo) return;
+  try {
+    const rows = execToObjects(`
+      SELECT a.play AS Partita, p.nome AS Giocatore, a.nick AS nick, gw.win_ruoli AS win_ruoli
+      FROM assignments a
+      JOIN players p ON p.nick = a.nick
+      LEFT JOIN game_wins gw ON gw.play = a.play
+      WHERE a.ruolo = ?
+      ORDER BY a.play
+    `, [ruolo]);
+    const result = rows.map(row => {
+      const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
+      return {
+        Partita: row.Partita,
+        Giocatore: `${row.Giocatore} (${row.nick})`,
+        Vittoria: winRoles.includes(ruolo) ? 'Sì' : 'No'
+      };
+    });
+    renderRows(['Partita', 'Giocatore', 'Vittoria'], result);
+    const volte = result.length;
+    const vinte = result.filter(r => r.Vittoria === 'Sì').length;
+    const pct = volte > 0 ? (vinte / volte * 100).toFixed(1) : '0.0';
+    document.getElementById('result').innerHTML += `
+      <div class="note-box"><b>${escapeHtml(ruolo)}:</b> giocato ${volte} volte, vinto ${vinte} (${pct}%)</div>
+    `;
+  } catch (e) { showError(e); }
+}
+
 async function init() {
   try {
     setStatus('Caricamento motore SQL...');
@@ -811,12 +850,17 @@ async function init() {
     db = new SQL.Database(new Uint8Array(buf));
 
     const games = execToObjects('SELECT play FROM games ORDER BY play DESC');
-    const select = document.getElementById('gameSelect');
-    select.innerHTML = games.map(g => `<option value="${g.play}">${g.play}</option>`).join('');
+    const gameOptions = document.getElementById('gameOptions');
+    gameOptions.innerHTML = games.map(g => `<option value="${g.play}">`).join('');
+    document.getElementById('gameSelect').value = games.length ? games[0].play : '';
 
     const players = execToObjects('SELECT nick, nome FROM players ORDER BY nome, nick');
     const playerSelect = document.getElementById('playerSelect');
     playerSelect.innerHTML = players.map(p => `<option value="${escapeHtml(p.nick)}">${escapeHtml(p.nome)} (${escapeHtml(p.nick)})</option>`).join('');
+
+    const roles = execToObjects('SELECT ruolo FROM roles ORDER BY ruolo');
+    const roleSelect = document.getElementById('roleSelect');
+    roleSelect.innerHTML = roles.map(r => `<option value="${escapeHtml(r.ruolo)}">${escapeHtml(r.ruolo)}</option>`).join('');
 
     setStatus('Database caricato: ' + games.length + ' partite pronte.');
   } catch (e) {
