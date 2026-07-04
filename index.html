@@ -569,25 +569,22 @@ function showUnderdogWin() {
       const media = s.exclusivities.reduce((a, b) => a + b, 0) / s.exclusivities.length;
       return {
         Giocatore: `${s.nome} (${nick})`,
-        Vittorie: s.exclusivities.length,
-        'Partite Giocate': s.partite,
-        'Media Underdog %': (media * 100).toFixed(1) + '%',
-        'Persone Battute': s.successes,
-        'Persone Affrontate': s.trials,
+        'Giocatori Battuti': s.successes,
+        'Giocatori Affrontati': s.trials,
+        'Underdog %': (media * 100).toFixed(1) + '%',
         'Wilson Score': wilsonLowerBound(s.successes, s.trials).toFixed(3),
         _wilson: wilsonLowerBound(s.successes, s.trials)
       };
     });
     result.sort((a, b) => b._wilson - a._wilson);
-    renderRows(['Giocatore', 'Vittorie', 'Partite Giocate', 'Media Underdog %', 'Persone Battute', 'Persone Affrontate', 'Wilson Score'], result);
+    renderRows(['Giocatore', 'Giocatori Battuti', 'Giocatori Affrontati', 'Underdog %', 'Wilson Score'], result);
     document.getElementById('result').innerHTML += `
       <div class="note-box">
         Quanto sei stato "underdog" nelle tue vittorie, cioè quanto eri in minoranza tra chi ha vinto.<br><br>
-        <b>Per ogni vittoria:</b> % di giocatori esclusi dal gruppo vincente (es. vinci in 2 su 10 giocatori → 80%, vinci in 8 su 10 → 20%).<br>
-        <b>Media Underdog %:</b> la media semplice di questa percentuale sulle tue vittorie.<br>
-        <b>Persone Battute:</b> quante persone in totale erano escluse dai gruppi vincenti nelle tue vittorie (sommate su tutte le vittorie).<br>
-        <b>Persone Affrontate:</b> quante persone in totale hai incontrato in <i>tutte</i> le partite giocate, vinte o perse.<br>
-        <b>Wilson Score</b> = rapporto tra queste due colonne, corretto per la dimensione del campione: è esattamente il criterio di ordinamento, quindi più alto è "Persone Affrontate" rispetto a "Persone Battute" più il punteggio si avvicina in modo affidabile a quel rapporto. Così vincere spesso in minoranza batte una singola vittoria fortunata su poche partite giocate.
+        <b>Giocatori Battuti:</b> quante persone in totale erano escluse dai gruppi vincenti nelle tue vittorie (sommate su tutte le vittorie).<br>
+        <b>Giocatori Affrontati:</b> quante persone in totale hai incontrato in <i>tutte</i> le partite giocate, vinte o perse.<br>
+        <b>Underdog %:</b> la media semplice, partita per partita, di quanti giocatori erano esclusi dal gruppo vincente (es. vinci in 2 su 10 giocatori → 80%, vinci in 8 su 10 → 20%).<br>
+        <b>Wilson Score</b> = rapporto tra Giocatori Battuti e Giocatori Affrontati, corretto per la dimensione del campione: è esattamente il criterio di ordinamento, così vincere spesso in minoranza batte una singola vittoria fortunata su poche partite giocate.
       </div>
     `;
   } catch (e) { showError(e); }
