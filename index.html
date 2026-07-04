@@ -117,9 +117,10 @@
     <button onclick="showShadowCounts()">% Ombra</button>
     <button onclick="showRolesCatalog()">Ruoli e Condizioni (RC)</button>
     <button onclick="showAffezionati()">Affezionati al ruolo</button>
-    <button onclick="showMasterCounts()">Master</button>
     <button onclick="showStreaks()">Streak</button>
     <button onclick="showCompagniVittoria()">Compagni di Vittoria</button>
+    <button onclick="showCompagniSconfitte()">Compagni di Sconfitte</button>
+    <button onclick="showMasterCounts()">Master</button>
     <button onclick="showPlayerCountDistribution()">Partite per numero di giocatori</button>
     <button onclick="showRuoliPossibiliDistribution()">Partite per set di ruoli possibili</button>
   </div>
@@ -493,47 +494,71 @@ function showStreaks() {
   } catch (e) { showError(e); }
 }
 
-function showCompagniVittoria() {
-  try {
-    const rows = execToObjects(`
-      SELECT a.play AS play, a.nick AS nick, p.nome AS nome, a.ruolo AS ruolo, gw.win_ruoli AS win_ruoli
-      FROM assignments a
-      JOIN players p ON p.nick = a.nick
-      JOIN game_wins gw ON gw.play = a.play
-      WHERE a.ruolo != 'MASTER'
-    `);
-    const byPlay = {};
-    for (const row of rows) {
-      if (!byPlay[row.play]) byPlay[row.play] = [];
-      const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
-      byPlay[row.play].push({ nick: row.nick, nome: row.nome, won: winRoles.includes(row.ruolo) });
-    }
+// Per ogni coppia di giocatori che ha giocato almeno una partita insieme:
+// partite insieme, volte in cui hanno vinto entrambi, volte in cui hanno perso entrambi.
+function computeCompagniStats() {
+  const rows = execToObjects(`
+    SELECT a.play AS play, a.nick AS nick, p.nome AS nome, a.ruolo AS ruolo, gw.win_ruoli AS win_ruoli
+    FROM assignments a
+    JOIN players p ON p.nick = a.nick
+    JOIN game_wins gw ON gw.play = a.play
+    WHERE a.ruolo != 'MASTER'
+  `);
+  const byPlay = {};
+  for (const row of rows) {
+    if (!byPlay[row.play]) byPlay[row.play] = [];
+    const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
+    byPlay[row.play].push({ nick: row.nick, nome: row.nome, won: winRoles.includes(row.ruolo) });
+  }
 
-    const pairs = {};
-    for (const players of Object.values(byPlay)) {
-      for (let i = 0; i < players.length; i++) {
-        for (let j = i + 1; j < players.length; j++) {
-          const [a, b] = [players[i], players[j]].sort((x, y) => x.nick.localeCompare(y.nick));
-          const key = a.nick + ' | ' + b.nick;
-          if (!pairs[key]) pairs[key] = { labelA: `${a.nome} (${a.nick})`, labelB: `${b.nome} (${b.nick})`, insieme: 0, vinte: 0 };
-          pairs[key].insieme += 1;
-          if (a.won && b.won) pairs[key].vinte += 1;
+  const pairs = {};
+  for (const players of Object.values(byPlay)) {
+    for (let i = 0; i < players.length; i++) {
+      for (let j = i + 1; j < players.length; j++) {
+        const [a, b] = [players[i], players[j]].sort((x, y) => x.nick.localeCompare(y.nick));
+        const key = a.nick + ' | ' + b.nick;
+        if (!pairs[key]) {
+          pairs[key] = {
+            nickA: a.nick, nickB: b.nick,
+            labelA: `${a.nome} (${a.nick})`, labelB: `${b.nome} (${b.nick})`,
+            insieme: 0, vinteInsieme: 0, perseInsieme: 0
+          };
         }
+        pairs[key].insieme += 1;
+        if (a.won && b.won) pairs[key].vinteInsieme += 1;
+        if (!a.won && !b.won) pairs[key].perseInsieme += 1;
       }
     }
+  }
+  return pairs;
+}
 
-    const result = Object.values(pairs).map(p => ({
-      Coppia: `${p.labelA} & ${p.labelB}`,
-      'Partite Insieme': p.insieme,
-      'Vittorie Insieme': p.vinte,
-      '% Win Insieme': p.insieme > 0 ? (p.vinte / p.insieme * 100).toFixed(1) + '%' : '0.0%',
-      'Wilson Score': wilsonLowerBound(p.vinte, p.insieme).toFixed(3),
-      _wilson: wilsonLowerBound(p.vinte, p.insieme)
-    })).sort((a, b) => b._wilson - a._wilson);
+function renderCompagniTable(pairs, successKey, label) {
+  const result = Object.values(pairs).map(p => ({
+    Coppia: `${p.labelA} & ${p.labelB}`,
+    'Partite Insieme': p.insieme,
+    [label]: p[successKey],
+    [`% ${label}`]: p.insieme > 0 ? (p[successKey] / p.insieme * 100).toFixed(1) + '%' : '0.0%',
+    'Wilson Score': wilsonLowerBound(p[successKey], p.insieme).toFixed(3),
+    _wilson: wilsonLowerBound(p[successKey], p.insieme)
+  })).sort((a, b) => b._wilson - a._wilson);
+  renderRows(['Coppia', 'Partite Insieme', label, `% ${label}`, 'Wilson Score'], result);
+}
 
-    renderRows(['Coppia', 'Partite Insieme', 'Vittorie Insieme', '% Win Insieme', 'Wilson Score'], result);
+function showCompagniVittoria() {
+  try {
+    renderCompagniTable(computeCompagniStats(), 'vinteInsieme', 'Vittorie Insieme');
     document.getElementById('result').innerHTML += `
       <div class="note-box">Per ogni coppia di giocatori che ha giocato almeno una partita insieme: quante volte hanno vinto <i>entrambi</i> nella stessa partita, rispetto a quante partite hanno giocato insieme (non rispetto al totale vittorie di ciascuno). Ordinata per Wilson Score per non premiare coppie con una sola partita insieme fortunata.</div>
+    `;
+  } catch (e) { showError(e); }
+}
+
+function showCompagniSconfitte() {
+  try {
+    renderCompagniTable(computeCompagniStats(), 'perseInsieme', 'Sconfitte Insieme');
+    document.getElementById('result').innerHTML += `
+      <div class="note-box">Per ogni coppia di giocatori che ha giocato almeno una partita insieme: quante volte hanno perso <i>entrambi</i> nella stessa partita, rispetto a quante partite hanno giocato insieme. Ordinata per Wilson Score per non premiare coppie con una sola partita insieme sfortunata.</div>
     `;
   } catch (e) { showError(e); }
 }
@@ -760,9 +785,31 @@ function showPlayerHistory() {
         record sconfitte consecutive: ${myStreak.longestLoss} (attuale: ${myStreak.curLoss})
       </div>
     ` : '';
+
+    const allPairs = Object.values(computeCompagniStats()).filter(p => p.nickA === nick || p.nickB === nick);
+    function bestCompagno(successKey) {
+      if (allPairs.length === 0) return '—';
+      const withScore = allPairs.map(p => ({
+        altro: p.nickA === nick ? p.labelB : p.labelA,
+        successi: p[successKey], insieme: p.insieme,
+        wilson: wilsonLowerBound(p[successKey], p.insieme)
+      }));
+      const max = Math.max(...withScore.map(p => p.wilson));
+      if (max === 0) return '—';
+      return withScore.filter(p => p.wilson === max).map(p => `${p.altro} (${p.successi}/${p.insieme})`).join(', ');
+    }
+    const compagniHtml = `
+      <div class="note-box">
+        <b>Compagni:</b>
+        miglior compagno di vittoria: ${bestCompagno('vinteInsieme')} —
+        miglior compagno di sconfitta: ${bestCompagno('perseInsieme')}
+      </div>
+    `;
+
     document.getElementById('result').innerHTML += `
       <div class="note-box"><b>% Vittorie:</b> ${totalWins} / ${totalGames} (${pctVittorie}%)</div>
       ${streakHtml}
+      ${compagniHtml}
       <div class="note-box"><b>Per Condizione Vittoria:</b> mostra tutte le 23 condizioni possibili (18 atomiche + 5 composte), anche se mai giocate. Quante volte hai giocato un ruolo appartenente a quella condizione, quante volte hai vinto <i>specificamente grazie a quella condizione</i> (deve comparire tra le fazioni vincenti di quella partita) e la relativa percentuale. Ordinata per Wilson Score, non per % Win grezza. Sommando "Giocate" su tutte le righe si ottiene il totale delle partite giocate, perché ogni ruolo conta per una condizione composta OPPURE per i suoi token atomici, mai per entrambi.</div>
       ${html}
       <div class="note-box"><b>Legenda condizioni composte</b>:<br>
