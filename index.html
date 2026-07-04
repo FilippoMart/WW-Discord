@@ -705,8 +705,18 @@ function showPlayerHistory() {
     }
     html += '</tbody></table></div>';
     const pctVittorie = totalGames > 0 ? (totalWins / totalGames * 100).toFixed(1) : '0.0';
+    const allStreaks = computeAllPlayerStreaks();
+    const myStreak = allStreaks[nick];
+    const streakHtml = myStreak ? `
+      <div class="note-box">
+        <b>Streak:</b>
+        record vittorie consecutive: ${myStreak.longestWin} (attuale: ${myStreak.curWin}) —
+        record sconfitte consecutive: ${myStreak.longestLoss} (attuale: ${myStreak.curLoss})
+      </div>
+    ` : '';
     document.getElementById('result').innerHTML += `
       <div class="note-box"><b>% Vittorie:</b> ${totalWins} / ${totalGames} (${pctVittorie}%)</div>
+      ${streakHtml}
       <div class="note-box"><b>Per Condizione Vittoria:</b> mostra tutte le 23 condizioni possibili (18 atomiche + 5 composte), anche se mai giocate. Quante volte hai giocato un ruolo appartenente a quella condizione, quante volte hai vinto <i>specificamente grazie a quella condizione</i> (deve comparire tra le fazioni vincenti di quella partita) e la relativa percentuale. Ordinata per Wilson Score, non per % Win grezza. Sommando "Giocate" su tutte le righe si ottiene il totale delle partite giocate, perché ogni ruolo conta per una condizione composta OPPURE per i suoi token atomici, mai per entrambi.</div>
       ${html}
       <div class="note-box"><b>Legenda condizioni composte</b>:<br>
@@ -718,18 +728,6 @@ function showPlayerHistory() {
         Un ruolo con esattamente questa combinazione di fazioni conta solo per la condizione composta corrispondente, non per i singoli token.
       </div>
     `;
-
-    const allStreaks = computeAllPlayerStreaks();
-    const myStreak = allStreaks[nick];
-    if (myStreak) {
-      document.getElementById('result').innerHTML += `
-        <div class="note-box">
-          <b>Streak:</b>
-          record vittorie consecutive: ${myStreak.longestWin} (attuale: ${myStreak.curWin}) —
-          record sconfitte consecutive: ${myStreak.longestLoss} (attuale: ${myStreak.curLoss})
-        </div>
-      `;
-    }
   } catch (e) { showError(e); }
 }
 
