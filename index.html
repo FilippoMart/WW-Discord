@@ -382,7 +382,7 @@ function showRoleRanking() {
       'Win %': (s.vinte / s.giocate * 100).toFixed(1) + '%',
       'Wilson Score': wilsonLowerBound(s.vinte, s.giocate).toFixed(3),
       _wilson: wilsonLowerBound(s.vinte, s.giocate)
-    })).sort((a, b) => b._wilson - a._wilson);
+    })).sort((a, b) => b._wilson - a._wilson || b.Vinte - a.Vinte || a.Giocate - b.Giocate);
     renderRows(['Ruolo', 'Vinte', 'Giocate', 'Win %', 'Wilson Score'], result);
     document.getElementById('result').innerHTML += `
       <div class="note-box">Tasso di vittoria aggregato per ciascun ruolo (su tutti i giocatori che l'hanno interpretato), ordinato per Wilson Score. Solo i ruoli giocati almeno una volta compaiono qui.</div>
@@ -702,7 +702,7 @@ function showUnderdogWin() {
       'Wilson Score': wilsonLowerBound(s.successes, s.trials).toFixed(3),
       _wilson: wilsonLowerBound(s.successes, s.trials)
     }));
-    result.sort((a, b) => b._wilson - a._wilson);
+    result.sort((a, b) => b._wilson - a._wilson || b['Giocatori Battuti'] - a['Giocatori Battuti'] || a['Giocatori Affrontati'] - b['Giocatori Affrontati']);
     renderRows(['Giocatore', 'Giocatori Battuti', 'Giocatori Affrontati', 'Underdog %', 'Wilson Score'], result);
     document.getElementById('result').innerHTML += `
       <div class="note-box">
