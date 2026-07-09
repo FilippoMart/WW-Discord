@@ -884,7 +884,7 @@ function showPlayerHistory() {
     });
     renderRows(['Partita', 'Ruolo', 'Condizioni Vittoria', 'Condizioni Vittoria Finale', 'Ombra', 'Vittoria'], result);
     document.getElementById('result').innerHTML += `
-      <div class="note-box"><b>Condizioni Vittoria Finale:</b> uguali a quelle di inizio partita, tranne per eventi accaduti durante la partita (dedotti dalle note): il romeo di Giulietta prende <b>Romeo</b>, i gildati del Capogilda prendono <b>Criminali</b>, i vampirizzati prendono <b>Vampiro</b>, il Contadino Lupo svegliato prende <b>Capobranco, Lupo Reietto</b>. Tutte le statistiche sottostanti usano questa colonna, non quella di inizio partita.</div>
+      <div class="note-box"><b>Condizioni Vittoria Finale:</b> uguali a quelle di inizio partita, tranne per eventi accaduti durante la partita (dedotti dalle note): il romeo di Giulietta prende <b>Romeo</b>, i gildati del Capogilda prendono <b>Criminali</b>, i vampirizzati prendono <b>Vampiro</b>, il Contadino Lupo svegliato prende <b>Capobranco, Lupo Reietto</b>, il Fanatico prende la condizione di vittoria del ruolo di cui è fanatico. Tutte le statistiche sottostanti usano questa colonna, non quella di inizio partita.</div>
     `;
 
     const totalGames = rows.length;
@@ -1009,7 +1009,7 @@ function showPlayerHistory() {
       ${compagniHtml}
       <div class="note-box"><b>Condizioni di Vittoria Implose:</b> raggruppa le condizioni esplose in 5 macro-categorie (Umani, Ombre, Aiutanti, Amanti, Afazione), sommando Giocate/Vinte dei membri di ciascun gruppo. Nessuna sovrapposizione tra i gruppi.</div>
       ${implodedHtml}
-      <div class="note-box"><b>Nota:</b> Fanatico e Becchino, avendo condizioni di vittoria variabili, sono esclusi dai raggruppamenti e compaiono solo nella tabella Esplose.</div>
+      <div class="note-box"><b>Nota:</b> Becchino, avendo una condizione di vittoria variabile, è escluso dai raggruppamenti e compare solo nella tabella Esplose. Il Fanatico invece eredita a fine partita la condizione di vittoria del ruolo di cui è fanatico, quindi rientra normalmente nel gruppo corrispondente.</div>
       <div class="note-box"><b>Condizioni di Vittoria Esplose:</b> mostra tutte le 24 condizioni possibili (19 atomiche + 5 composte), anche se mai giocate. Basate sulle condizioni di vittoria <i>finali</i> di fine partita (che tengono conto di eventi come vampirizzazioni, gildate, romeo di Giulietta e branco svegliato — vedi nota sopra), non sul ruolo assegnato a inizio partita. Quante volte hai giocato un ruolo appartenente a quella condizione, quante volte hai vinto <i>specificamente grazie a quella condizione</i> (deve comparire tra le fazioni vincenti di quella partita) e la relativa percentuale. Ordinata per Wilson Score, non per % Win grezza. Sommando "Giocate" su tutte le righe si ottiene il totale delle partite giocate, perché ogni ruolo conta per una condizione composta OPPURE per i suoi token atomici, mai per entrambi.</div>
       ${html}
       <div class="note-box"><b>Legenda condizioni composte</b>:<br>
