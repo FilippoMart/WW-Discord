@@ -817,10 +817,12 @@ function showGameComposition() {
     const rows = execToObjects(`
       SELECT p.nome AS Giocatore, a.ruolo AS Ruolo,
              COALESCE(r.fazione, '') AS "Condizioni Vittoria",
+             COALESCE(fo.fazione_finale, r.fazione, '') AS "Condizioni Vittoria Finale",
              COALESCE(r.ombra, '') AS Ombra
       FROM assignments a
       JOIN players p ON p.nick = a.nick
       LEFT JOIN roles r ON r.ruolo = a.ruolo
+      LEFT JOIN fazione_overrides fo ON fo.play = a.play AND fo.nick = a.nick
       WHERE a.play = ?
       ORDER BY CASE WHEN a.ruolo = 'MASTER' THEN 0 ELSE 1 END, r.fazione, Giocatore
     `, [play]);
@@ -832,7 +834,7 @@ function showGameComposition() {
 
     const winRoles = (winRows.length ? (winRows[0].win_ruoli || '') : '').split(',').map(s => s.trim());
     const rowClasses = rows.map(r => winRoles.includes(r.Ruolo) ? 'win-row' : '');
-    renderRows(['Giocatore', 'Ruolo', 'Condizioni Vittoria', 'Ombra'], rows, rowClasses);
+    renderRows(['Giocatore', 'Ruolo', 'Condizioni Vittoria', 'Condizioni Vittoria Finale', 'Ombra'], rows, rowClasses);
 
     let extra = `<div class="note-box"><b>Giocatori:</b> ${numGiocatori}</div>`;
     if (ruoliPossRows.length && ruoliPossRows[0].ruoli_possibili) {
@@ -859,10 +861,12 @@ function showPlayerHistory() {
     const rows = execToObjects(`
       SELECT a.play AS Partita, a.ruolo AS ruolo,
              COALESCE(r.fazione, '') AS "Condizioni Vittoria",
+             COALESCE(fo.fazione_finale, r.fazione, '') AS "Condizioni Vittoria Finale",
              COALESCE(r.ombra, '') AS Ombra,
              gw.win AS win, gw.win_ruoli AS win_ruoli
       FROM assignments a
       LEFT JOIN roles r ON r.ruolo = a.ruolo
+      LEFT JOIN fazione_overrides fo ON fo.play = a.play AND fo.nick = a.nick
       LEFT JOIN game_wins gw ON gw.play = a.play
       WHERE a.nick = ? AND a.ruolo != 'MASTER'
       ORDER BY a.play
@@ -873,11 +877,15 @@ function showPlayerHistory() {
         Partita: row.Partita,
         Ruolo: row.ruolo,
         'Condizioni Vittoria': row['Condizioni Vittoria'],
+        'Condizioni Vittoria Finale': row['Condizioni Vittoria Finale'],
         Ombra: row.Ombra,
         Vittoria: winRoles.includes(row.ruolo) ? 'Sì' : 'No'
       };
     });
-    renderRows(['Partita', 'Ruolo', 'Condizioni Vittoria', 'Ombra', 'Vittoria'], result);
+    renderRows(['Partita', 'Ruolo', 'Condizioni Vittoria', 'Condizioni Vittoria Finale', 'Ombra', 'Vittoria'], result);
+    document.getElementById('result').innerHTML += `
+      <div class="note-box"><b>Condizioni Vittoria Finale:</b> uguali a quelle di inizio partita, tranne per eventi accaduti durante la partita (dedotti dalle note): il romeo di Giulietta prende <b>Romeo</b>, i gildati del Capogilda prendono <b>Criminali</b>, i vampirizzati prendono <b>Vampiro</b>, il Contadino Lupo svegliato prende <b>Capobranco, Lupo Reietto</b>. Tutte le statistiche sottostanti usano questa colonna, non quella di inizio partita.</div>
+    `;
 
     const totalGames = rows.length;
     const totalWins = result.filter(r => r.Vittoria === 'Sì').length;
@@ -900,13 +908,14 @@ function showPlayerHistory() {
     for (const r of allFazioni) {
       for (const t of (r.fazione || '').split(',').map(s => s.trim()).filter(Boolean)) atomicTokens.add(t);
     }
+    atomicTokens.add('Romeo'); // condizione finale-partita (mai una fazione di partenza di un ruolo): il romeo di Giulietta
 
     const condStats = {};
     for (const t of atomicTokens) condStats[t] = { giocate: 0, vinte: 0 };
     for (const composta of COMPOSTE) condStats[composta.nome] = { giocate: 0, vinte: 0 };
 
     for (const row of rows) {
-      const tokens = (row['Condizioni Vittoria'] || '').split(',').map(s => s.trim()).filter(Boolean);
+      const tokens = (row['Condizioni Vittoria Finale'] || '').split(',').map(s => s.trim()).filter(Boolean);
       const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
       const winTokens = (row.win || '').split(',').map(s => s.trim());
       const won = winRoles.includes(row.ruolo);
@@ -945,7 +954,7 @@ function showPlayerHistory() {
       'Umani': ['Mistici', 'Villaggio', 'Criminali', 'Inquisizione', 'Città'],
       'Ombre': ['Capobranco', 'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Negromante', 'Nosferatu', 'Posseduto', 'Branco'],
       'Aiutanti': ['Traditore', 'Megera', 'Ghoul'],
-      'Amanti': ['Angelo', 'Giulietta'],
+      'Amanti': ['Angelo', 'Giulietta', 'Romeo'],
       'Afazione': ['Pazzo', 'Giullare', 'Viaggiatore']
     };
     const implodedRows = Object.entries(IMPLOSE_GROUPS).map(([gruppo, members]) => {
@@ -1001,7 +1010,7 @@ function showPlayerHistory() {
       <div class="note-box"><b>Condizioni di Vittoria Implose:</b> raggruppa le condizioni esplose in 5 macro-categorie (Umani, Ombre, Aiutanti, Amanti, Afazione), sommando Giocate/Vinte dei membri di ciascun gruppo. Nessuna sovrapposizione tra i gruppi.</div>
       ${implodedHtml}
       <div class="note-box"><b>Nota:</b> Fanatico e Becchino, avendo condizioni di vittoria variabili, sono esclusi dai raggruppamenti e compaiono solo nella tabella Esplose.</div>
-      <div class="note-box"><b>Condizioni di Vittoria Esplose:</b> mostra tutte le 23 condizioni possibili (18 atomiche + 5 composte), anche se mai giocate. Quante volte hai giocato un ruolo appartenente a quella condizione, quante volte hai vinto <i>specificamente grazie a quella condizione</i> (deve comparire tra le fazioni vincenti di quella partita) e la relativa percentuale. Ordinata per Wilson Score, non per % Win grezza. Sommando "Giocate" su tutte le righe si ottiene il totale delle partite giocate, perché ogni ruolo conta per una condizione composta OPPURE per i suoi token atomici, mai per entrambi.</div>
+      <div class="note-box"><b>Condizioni di Vittoria Esplose:</b> mostra tutte le 24 condizioni possibili (19 atomiche + 5 composte), anche se mai giocate. Basate sulle condizioni di vittoria <i>finali</i> di fine partita (che tengono conto di eventi come vampirizzazioni, gildate, romeo di Giulietta e branco svegliato — vedi nota sopra), non sul ruolo assegnato a inizio partita. Quante volte hai giocato un ruolo appartenente a quella condizione, quante volte hai vinto <i>specificamente grazie a quella condizione</i> (deve comparire tra le fazioni vincenti di quella partita) e la relativa percentuale. Ordinata per Wilson Score, non per % Win grezza. Sommando "Giocate" su tutte le righe si ottiene il totale delle partite giocate, perché ogni ruolo conta per una condizione composta OPPURE per i suoi token atomici, mai per entrambi.</div>
       ${html}
       <div class="note-box"><b>Legenda condizioni composte</b>:<br>
         <b>Città</b> = Villaggio, Mistici, Criminali, Inquisizione<br>
