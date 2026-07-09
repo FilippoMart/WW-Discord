@@ -305,7 +305,7 @@ function showShadowCounts() {
       stats[row.nick].total += 1;
       if (row.ombra === 'Ombra') stats[row.nick].ombra += 1;
     }
-    let result = Object.entries(stats).map(([nick, s]) => ({
+    let result = Object.entries(stats).filter(([, s]) => s.total >= 5).map(([nick, s]) => ({
       Giocatore: `${s.nome} (${nick})`,
       Volte_Ombra: s.ombra,
       'Giocate': s.total,
@@ -314,6 +314,9 @@ function showShadowCounts() {
     }));
     result = sortByRate(result, 'Volte_Ombra', 'Giocate');
     renderRows(['Giocatore', 'Volte_Ombra', 'Giocate', 'Ombra %', 'Wilson Score'], result);
+    document.getElementById('result').innerHTML += `
+      <div class="note-box">Solo giocatori con almeno 5 partite giocate.</div>
+    `;
   } catch (e) { showError(e); }
 }
 
@@ -332,7 +335,7 @@ function showCattivoCounts() {
       stats[row.nick].total += 1;
       if (row.ombra === 'Ombra' || row.ombra === 'Aiutante') stats[row.nick].cattivo += 1;
     }
-    let result = Object.entries(stats).map(([nick, s]) => ({
+    let result = Object.entries(stats).filter(([, s]) => s.total >= 5).map(([nick, s]) => ({
       Giocatore: `${s.nome} (${nick})`,
       Volte_Cattivo: s.cattivo,
       'Giocate': s.total,
@@ -342,7 +345,7 @@ function showCattivoCounts() {
     result = sortByRate(result, 'Volte_Cattivo', 'Giocate');
     renderRows(['Giocatore', 'Volte_Cattivo', 'Giocate', 'Cattivo %', 'Wilson Score'], result);
     document.getElementById('result').innerHTML += `
-      <div class="note-box"><b>Cattivo</b> = ruoli Ombra + Aiutante (Traditore, Ghoul, Megera): chi è dalla parte oscura o la aiuta, non solo chi è "Ombra" in senso stretto.</div>
+      <div class="note-box"><b>Cattivo</b> = ruoli Ombra + Aiutante (Traditore, Ghoul, Megera): chi è dalla parte oscura o la aiuta, non solo chi è "Ombra" in senso stretto. Solo giocatori con almeno 5 partite giocate.</div>
     `;
   } catch (e) { showError(e); }
 }
@@ -518,14 +521,14 @@ function showMasterCounts() {
     }
     const OMBRE_FAZIONI = ['Capobranco', 'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Negromante', 'Nosferatu', 'Posseduto'];
     const breakdown = Object.keys(stats).sort().map(master => {
-      const entry = { Master: master, Giocate: stats[master].total };
+      const entry = { Master: master, Masterate: stats[master].total };
       const ombre = OMBRE_FAZIONI.reduce((sum, f) => sum + (stats[master].factions[f] || 0), 0);
       entry.Umani = stats[master].total - ombre;
       entry.Ombre = ombre;
       for (const f of FAZIONI) entry[f] = stats[master].factions[f] || 0;
       return entry;
     });
-    renderRows(['Master', 'Giocate', 'Umani', 'Ombre', ...FAZIONI], breakdown);
+    renderRows(['Master', 'Masterate', 'Umani', 'Ombre', ...FAZIONI], breakdown);
   } catch (e) { showError(e); }
 }
 
@@ -719,7 +722,7 @@ function showUnderdogWin() {
       }
     }
 
-    let result = Object.entries(stats).filter(([, s]) => s.vittorie > 0).map(([nick, s]) => ({
+    let result = Object.entries(stats).filter(([, s]) => s.vittorie > 0 && s.trials >= 50).map(([nick, s]) => ({
       Giocatore: `${s.nome} (${nick})`,
       'Giocatori Battuti': s.successes,
       'Giocatori Affrontati': s.trials,
@@ -735,7 +738,8 @@ function showUnderdogWin() {
         <b>Giocatori Battuti:</b> quante persone in totale erano escluse dai gruppi vincenti nelle tue vittorie (sommate su tutte le vittorie).<br>
         <b>Giocatori Affrontati:</b> quante persone in totale hai incontrato in <i>tutte</i> le partite giocate, vinte o perse.<br>
         <b>% Underdog</b> = Giocatori Battuti / Giocatori Affrontati: le sconfitte contano (aggiungono al denominatore senza aggiungere al numeratore), quindi una singola vittoria molto esclusiva in mezzo a tante sconfitte non gonfia il numero.<br>
-        <b>Wilson Score</b> = stessa frazione, corretta per la dimensione del campione: è il criterio di ordinamento, così vincere spesso in minoranza batte una singola vittoria fortunata su poche partite giocate.
+        <b>Wilson Score</b> = stessa frazione, corretta per la dimensione del campione: è il criterio di ordinamento, così vincere spesso in minoranza batte una singola vittoria fortunata su poche partite giocate.<br>
+        Solo giocatori che hanno affrontato almeno 50 persone in totale.
       </div>
     `;
   } catch (e) { showError(e); }
@@ -758,7 +762,7 @@ function showWinRates() {
       const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
       if (winRoles.includes(row.ruolo)) stats[nick].wins += 1;
     }
-    let result = Object.entries(stats).map(([nick, s]) => ({
+    let result = Object.entries(stats).filter(([, s]) => s.total >= 5).map(([nick, s]) => ({
       Giocatore: `${s.nome} (${nick})`,
       Vinte: s.wins,
       Giocate: s.total,
@@ -767,6 +771,9 @@ function showWinRates() {
     }));
     result = sortByRate(result, 'Vinte', 'Giocate');
     renderRows(['Giocatore', 'Vinte', 'Giocate', 'Win %', 'Wilson Score'], result);
+    document.getElementById('result').innerHTML += `
+      <div class="note-box">Solo giocatori con almeno 5 partite giocate.</div>
+    `;
   } catch (e) { showError(e); }
 }
 
