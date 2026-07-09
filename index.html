@@ -897,11 +897,38 @@ function showPlayerHistory() {
       'Wilson Score': wilsonLowerBound(s.vinte, s.giocate)
     })).sort((a, b) => b['Wilson Score'] - a['Wilson Score'] || a.Giocate - b.Giocate);
 
-    let html = '<div class="table-scroll"><table><thead><tr><th>Condizione Vittoria</th><th>Giocate</th><th>Vinte</th><th>Perse</th><th>% Win</th><th>Wilson Score</th></tr></thead><tbody>';
-    for (const row of condRows) {
-      html += `<tr><td>${escapeHtml(row['Condizione Vittoria'])}</td><td>${row.Giocate}</td><td>${row.Vinte}</td><td>${row.Perse}</td><td>${(row['% Win'] * 100).toFixed(1)}%</td><td>${row['Wilson Score'].toFixed(3)}</td></tr>`;
+    function condTableHtml(rows) {
+      let h = '<div class="table-scroll"><table><thead><tr><th>Condizione Vittoria</th><th>Giocate</th><th>Vinte</th><th>Perse</th><th>% Win</th><th>Wilson Score</th></tr></thead><tbody>';
+      for (const row of rows) {
+        h += `<tr><td>${escapeHtml(row['Condizione Vittoria'])}</td><td>${row.Giocate}</td><td>${row.Vinte}</td><td>${row.Perse}</td><td>${(row['% Win'] * 100).toFixed(1)}%</td><td>${row['Wilson Score'].toFixed(3)}</td></tr>`;
+      }
+      h += '</tbody></table></div>';
+      return h;
     }
-    html += '</tbody></table></div>';
+    const html = condTableHtml(condRows);
+
+    // Condizioni di Vittoria Implose: raggruppano più condizioni esplose in un'unica categoria
+    const IMPLOSE_GROUPS = {
+      'Umani': ['Mistici', 'Villaggio', 'Criminali', 'Inquisizione', 'Città'],
+      'Ombra': ['Capobranco', 'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Negromante', 'Nosferatu', 'Posseduto'],
+      'Cattivi': ['Capobranco', 'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Negromante', 'Nosferatu', 'Posseduto', 'Traditore', 'Megera', 'Ghoul'],
+      'Amanti': ['Angelo', 'Giulietta'],
+      'Afazione': ['Pazzo', 'Giullare', 'Viaggiatore'],
+      'Fanatico': ['Fanatico']
+    };
+    const implodedRows = Object.entries(IMPLOSE_GROUPS).map(([gruppo, members]) => {
+      const giocate = members.reduce((sum, m) => sum + (condStats[m] ? condStats[m].giocate : 0), 0);
+      const vinte = members.reduce((sum, m) => sum + (condStats[m] ? condStats[m].vinte : 0), 0);
+      return {
+        'Condizione Vittoria': gruppo,
+        Giocate: giocate,
+        Vinte: vinte,
+        Perse: giocate - vinte,
+        '% Win': giocate > 0 ? vinte / giocate : 0,
+        'Wilson Score': wilsonLowerBound(vinte, giocate)
+      };
+    }).sort((a, b) => b['Wilson Score'] - a['Wilson Score'] || a.Giocate - b.Giocate);
+    const implodedHtml = condTableHtml(implodedRows);
     const pctVittorie = totalGames > 0 ? (totalWins / totalGames * 100).toFixed(1) : '0.0';
     const myStreak = computeAllPlayerStreaks()[nick];
     const myOmbraStreak = computeAllPlayerOmbraStreaks()[nick];
@@ -939,7 +966,9 @@ function showPlayerHistory() {
       <div class="note-box"><b>% Vittorie:</b> ${totalWins} / ${totalGames} (${pctVittorie}%)</div>
       ${streakHtml}
       ${compagniHtml}
-      <div class="note-box"><b>Per Condizione Vittoria:</b> mostra tutte le 23 condizioni possibili (18 atomiche + 5 composte), anche se mai giocate. Quante volte hai giocato un ruolo appartenente a quella condizione, quante volte hai vinto <i>specificamente grazie a quella condizione</i> (deve comparire tra le fazioni vincenti di quella partita) e la relativa percentuale. Ordinata per Wilson Score, non per % Win grezza. Sommando "Giocate" su tutte le righe si ottiene il totale delle partite giocate, perché ogni ruolo conta per una condizione composta OPPURE per i suoi token atomici, mai per entrambi.</div>
+      <div class="note-box"><b>Condizioni di Vittoria Implose:</b> raggruppa le condizioni esplose in 6 macro-categorie (Umani, Ombra, Cattivi, Amanti, Afazione, Fanatico), sommando Giocate/Vinte dei membri di ciascun gruppo. Cattivi include anche Ombra (si sovrappongono di proposito).</div>
+      ${implodedHtml}
+      <div class="note-box"><b>Condizioni di Vittoria Esplose:</b> mostra tutte le 23 condizioni possibili (18 atomiche + 5 composte), anche se mai giocate. Quante volte hai giocato un ruolo appartenente a quella condizione, quante volte hai vinto <i>specificamente grazie a quella condizione</i> (deve comparire tra le fazioni vincenti di quella partita) e la relativa percentuale. Ordinata per Wilson Score, non per % Win grezza. Sommando "Giocate" su tutte le righe si ottiene il totale delle partite giocate, perché ogni ruolo conta per una condizione composta OPPURE per i suoi token atomici, mai per entrambi.</div>
       ${html}
       <div class="note-box"><b>Legenda condizioni composte</b>:<br>
         <b>Città</b> = Villaggio, Mistici, Criminali, Inquisizione<br>
