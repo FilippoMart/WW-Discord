@@ -138,6 +138,7 @@
     <button onclick="showUnderdogWin()">% Underdog</button>
     <button onclick="showShadowCounts()">% Ombra</button>
     <button onclick="showCattivoCounts()">% Cattivo</button>
+    <button onclick="showCattiviInnati()">Cattivi Innati</button>
     <button onclick="showRolesCatalog()">Ruoli e Condizioni (RC)</button>
     <button onclick="showRoleRanking()">Ranking Ruoli</button>
     <button onclick="showAffezionati()">Affezionati al ruolo</button>
@@ -346,6 +347,38 @@ function showCattivoCounts() {
     renderRows(['Giocatore', 'Volte_Cattivo', 'Giocate', 'Cattivo %', 'Wilson Score'], result);
     document.getElementById('result').innerHTML += `
       <div class="note-box"><b>Cattivo</b> = ruoli Ombra + Aiutante (Traditore, Ghoul, Megera): chi è dalla parte oscura o la aiuta, non solo chi è "Ombra" in senso stretto. Solo giocatori con almeno 5 partite giocate.</div>
+    `;
+  } catch (e) { showError(e); }
+}
+
+function showCattiviInnati() {
+  try {
+    const rows = execToObjects(`
+      SELECT a.nick AS nick, p.nome AS nome, a.ruolo AS ruolo, r.ombra AS ombra, gw.win_ruoli AS win_ruoli
+      FROM assignments a
+      JOIN players p ON p.nick = a.nick
+      LEFT JOIN roles r ON r.ruolo = a.ruolo
+      LEFT JOIN game_wins gw ON gw.play = a.play
+      WHERE a.ruolo != 'MASTER' AND (r.ombra = 'Ombra' OR r.ombra = 'Aiutante')
+    `);
+    const stats = {};
+    for (const row of rows) {
+      if (!stats[row.nick]) stats[row.nick] = { nome: row.nome, vinte: 0, total: 0 };
+      stats[row.nick].total += 1;
+      const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
+      if (winRoles.includes(row.ruolo)) stats[row.nick].vinte += 1;
+    }
+    let result = Object.entries(stats).filter(([, s]) => s.total >= 5).map(([nick, s]) => ({
+      Giocatore: `${s.nome} (${nick})`,
+      Vinte: s.vinte,
+      'Giocate da Cattivo': s.total,
+      '% Win': ((s.vinte / s.total) * 100).toFixed(1) + '%',
+      'Wilson Score': wilsonLowerBound(s.vinte, s.total).toFixed(3)
+    }));
+    result = sortByRate(result, 'Vinte', 'Giocate da Cattivo');
+    renderRows(['Giocatore', 'Vinte', 'Giocate da Cattivo', '% Win', 'Wilson Score'], result);
+    document.getElementById('result').innerHTML += `
+      <div class="note-box"><b>Cattivi Innati:</b> tra le partite giocate con un ruolo Cattivo (Ombra + Aiutante: Traditore, Ghoul, Megera), quante volte si è vinto proprio da Cattivo. Solo giocatori con almeno 5 partite giocate da Cattivo.</div>
     `;
   } catch (e) { showError(e); }
 }
