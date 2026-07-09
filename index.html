@@ -943,7 +943,7 @@ function showPlayerHistory() {
     // Condizioni di Vittoria Implose: raggruppano più condizioni esplose in un'unica categoria
     const IMPLOSE_GROUPS = {
       'Umani': ['Mistici', 'Villaggio', 'Criminali', 'Inquisizione', 'Città'],
-      'Ombra': ['Capobranco', 'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Negromante', 'Nosferatu', 'Posseduto', 'Branco'],
+      'Ombre': ['Capobranco', 'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Negromante', 'Nosferatu', 'Posseduto', 'Branco'],
       'Aiutanti': ['Traditore', 'Megera', 'Ghoul'],
       'Amanti': ['Angelo', 'Giulietta'],
       'Afazione': ['Pazzo', 'Giullare', 'Viaggiatore']
@@ -998,7 +998,7 @@ function showPlayerHistory() {
       <div class="note-box"><b>% Vittorie:</b> ${totalWins} / ${totalGames} (${pctVittorie}%)</div>
       ${streakHtml}
       ${compagniHtml}
-      <div class="note-box"><b>Condizioni di Vittoria Implose:</b> raggruppa le condizioni esplose in 5 macro-categorie (Umani, Ombra, Aiutanti, Amanti, Afazione), sommando Giocate/Vinte dei membri di ciascun gruppo. Nessuna sovrapposizione tra i gruppi.</div>
+      <div class="note-box"><b>Condizioni di Vittoria Implose:</b> raggruppa le condizioni esplose in 5 macro-categorie (Umani, Ombre, Aiutanti, Amanti, Afazione), sommando Giocate/Vinte dei membri di ciascun gruppo. Nessuna sovrapposizione tra i gruppi.</div>
       ${implodedHtml}
       <div class="note-box"><b>Nota:</b> Fanatico e Becchino, avendo condizioni di vittoria variabili, sono esclusi dai raggruppamenti e compaiono solo nella tabella Esplose.</div>
       <div class="note-box"><b>Condizioni di Vittoria Esplose:</b> mostra tutte le 23 condizioni possibili (18 atomiche + 5 composte), anche se mai giocate. Quante volte hai giocato un ruolo appartenente a quella condizione, quante volte hai vinto <i>specificamente grazie a quella condizione</i> (deve comparire tra le fazioni vincenti di quella partita) e la relativa percentuale. Ordinata per Wilson Score, non per % Win grezza. Sommando "Giocate" su tutte le righe si ottiene il totale delle partite giocate, perché ogni ruolo conta per una condizione composta OPPURE per i suoi token atomici, mai per entrambi.</div>
