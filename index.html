@@ -138,7 +138,7 @@
     <button onclick="showUnderdogWin()">% Underdog</button>
     <button onclick="showShadowCounts()">% Ombra</button>
     <button onclick="showCattivoCounts()">% Cattivo</button>
-    <button onclick="showCattiviInnati()">Cattivi Innati</button>
+    <button onclick="showCattiviInnati()">Dark Souls</button>
     <button onclick="showRolesCatalog()">Ruoli e Condizioni (RC)</button>
     <button onclick="showRoleRanking()">Ranking Ruoli</button>
     <button onclick="showAffezionati()">Affezionati al ruolo</button>
@@ -378,7 +378,7 @@ function showCattiviInnati() {
     result = sortByRate(result, 'Vinte', 'Giocate da Cattivo');
     renderRows(['Giocatore', 'Vinte', 'Giocate da Cattivo', '% Win', 'Wilson Score'], result);
     document.getElementById('result').innerHTML += `
-      <div class="note-box"><b>Cattivi Innati:</b> tra le partite giocate con un ruolo Cattivo (Ombra + Aiutante: Traditore, Ghoul, Megera), quante volte si è vinto proprio da Cattivo. Solo giocatori con almeno 5 partite giocate da Cattivo.</div>
+      <div class="note-box"><b>Dark Souls:</b> tra le partite giocate con un ruolo Cattivo (Ombra + Aiutante: Traditore, Ghoul, Megera), quante volte si è vinto proprio da Cattivo. Solo giocatori con almeno 5 partite giocate da Cattivo.</div>
     `;
   } catch (e) { showError(e); }
 }
