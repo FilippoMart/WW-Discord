@@ -279,6 +279,45 @@ function wilsonLowerBound(wins, total, z = 1.96) {
   return (centre - margin) / denominator;
 }
 
+// Grafico SVG a linea, senza dipendenze esterne: punti = [{play, pct, successes, trials}]
+function underdogChartSvg(points) {
+  const W = 700, H = 220, padL = 40, padR = 16, padT = 16, padB = 34;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const n = points.length;
+  const xAt = i => n === 1 ? padL + plotW / 2 : padL + (plotW * i / (n - 1));
+  const maxY = Math.max(10, ...points.map(p => p.pct));
+  const yAt = pct => padT + plotH - (plotH * pct / maxY);
+
+  let gridHtml = '';
+  const gridSteps = 4;
+  for (let g = 0; g <= gridSteps; g++) {
+    const val = maxY * g / gridSteps;
+    const y = yAt(val);
+    gridHtml += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}" stroke="#2c3038" stroke-width="1"/>`;
+    gridHtml += `<text x="${(padL - 6).toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="#9aa1ab">${val.toFixed(0)}%</text>`;
+  }
+
+  const labelIdxs = n === 1 ? [0] : Array.from(new Set([0, Math.floor((n - 1) / 2), n - 1]));
+  let xLabelsHtml = '';
+  for (const i of labelIdxs) {
+    xLabelsHtml += `<text x="${xAt(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="#9aa1ab">${escapeHtml(points[i].play)}</text>`;
+  }
+
+  const linePoints = points.map((p, i) => `${xAt(i).toFixed(1)},${yAt(p.pct).toFixed(1)}`).join(' ');
+  const circles = points.map((p, i) => `<circle cx="${xAt(i).toFixed(1)}" cy="${yAt(p.pct).toFixed(1)}" r="3" fill="#7c9cff"><title>${escapeHtml(p.play)}: ${p.pct.toFixed(1)}% (${p.successes}/${p.trials})</title></circle>`).join('');
+
+  return `
+    <div class="table-scroll">
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%; max-width:${W}px; height:auto; display:block;">
+        ${gridHtml}
+        <polyline points="${linePoints}" fill="none" stroke="#7c9cff" stroke-width="2"/>
+        ${circles}
+        ${xLabelsHtml}
+      </svg>
+    </div>
+  `;
+}
+
 // Ordina per Wilson score decrescente (penalizza percentuali su pochi campioni),
 // a parità per numeratore decrescente poi per totale crescente
 function sortByRate(rows, numKey, totalKey) {
@@ -863,7 +902,8 @@ function showPlayerHistory() {
              COALESCE(r.fazione, '') AS "Condizioni Vittoria",
              COALESCE(fo.fazione_finale, r.fazione, '') AS "Condizioni Vittoria Finale",
              COALESCE(r.ombra, '') AS Ombra,
-             gw.win AS win, gw.win_ruoli AS win_ruoli
+             gw.win AS win, gw.win_ruoli AS win_ruoli,
+             (SELECT COUNT(*) FROM assignments a2 WHERE a2.play = a.play AND a2.ruolo != 'MASTER') AS N
       FROM assignments a
       LEFT JOIN roles r ON r.ruolo = a.ruolo
       LEFT JOIN fazione_overrides fo ON fo.play = a.play AND fo.nick = a.nick
@@ -889,6 +929,23 @@ function showPlayerHistory() {
 
     const totalGames = rows.length;
     const totalWins = result.filter(r => r.Vittoria === 'Sì').length;
+
+    // Andamento % Underdog nel tempo: cumulativo partita dopo partita, in ordine cronologico
+    let cumSuccesses = 0, cumTrials = 0;
+    const underdogPoints = rows.map(row => {
+      const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim()).filter(Boolean);
+      const N = row.N || 0;
+      const won = winRoles.includes(row.ruolo);
+      cumTrials += N;
+      if (won) cumSuccesses += (N - winRoles.length);
+      return {
+        play: row.Partita,
+        pct: cumTrials > 0 ? (cumSuccesses / cumTrials * 100) : 0,
+        successes: cumSuccesses,
+        trials: cumTrials
+      };
+    });
+    const underdogChartHtml = underdogPoints.length > 0 ? underdogChartSvg(underdogPoints) : '';
 
     // Condizioni composte: solo per questa tabella, ESCLUSIVE rispetto alle atomiche
     // (se un ruolo corrisponde esattamente a una composta, conta solo per quella, non anche per i singoli token)
@@ -1005,6 +1062,8 @@ function showPlayerHistory() {
 
     document.getElementById('result').innerHTML += `
       <div class="note-box"><b>% Vittorie:</b> ${totalWins} / ${totalGames} (${pctVittorie}%)</div>
+      <div class="note-box"><b>Andamento % Underdog:</b> percentuale <i>cumulativa</i> partita dopo partita, in ordine cronologico (non il valore della singola partita). Stesso calcolo di "% Underdog": Giocatori Battuti / Giocatori Affrontati, sommati su tutte le partite fino a quel punto. Passa il mouse su un punto per vedere data e valore esatto.</div>
+      ${underdogChartHtml}
       ${streakHtml}
       ${compagniHtml}
       <div class="note-box"><b>Condizioni di Vittoria Implose:</b> raggruppa le condizioni esplose in 5 macro-categorie (Umani, Ombre, Aiutanti, Amanti, Afazione), sommando Giocate/Vinte dei membri di ciascun gruppo. Nessuna sovrapposizione tra i gruppi.</div>
