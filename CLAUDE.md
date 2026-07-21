@@ -6,18 +6,15 @@ Static, client-side stats website for Filippo's Discord-run Werewolf ("Lupus in 
 
 - `index.html` — the entire site (HTML + inline CSS + inline JS, sql.js from CDN).
 - `data.sqlite` — the database the site reads. Must be regenerated and copied here after every data change (see pipeline below).
+- `WWDiscordtemplate.xlsx` — the source-of-truth spreadsheet (sheets: `Giocatori`, `Ruoli`, `GPR`, `PRuoliPoss`, `PNotes`, `PWin`, `POverrides` — see schema below). Committed here so the whole pipeline is portable across machines; edit this copy (or keep a working copy at `C:\Users\filip\Documents\_Filippo stuff\Giochi\ww\WWDiscordtemplate.xlsx` in sync with it — that's the path `scripts/xlsx_to_sqlite.py` reads from by default, adjust `SRC` if working from the repo copy directly).
 - `scripts/xlsx_to_sqlite.py` — rebuilds the sqlite (and a `.sql` dump) from the xlsx source of truth. Re-run after every xlsx edit.
 - `docs/` — rulebook PDFs (RegoleDueLune, RegoleTreLune, RuoliDueLune, RuoliTreLune), just reference material, not part of the pipeline.
-
-## The one thing NOT in this repo
-
-**`WWDiscordtemplate.xlsx`** — the source-of-truth spreadsheet — lives only at `C:\Users\filip\Documents\_Filippo stuff\Giochi\ww\WWDiscordtemplate.xlsx` on Filippo's machine. It is not version-controlled or backed up anywhere. **If you're setting this project up on a new computer, you must bring this file over yourself** (cloud sync, USB, etc.) — nothing here does it for you. Once it's in place at the same path (or you adjust `SRC` in the script), everything else works from any machine that can clone this repo.
 
 ## Pipeline: how to add or change data
 
 1. Edit `WWDiscordtemplate.xlsx` (sheets: `Giocatori`, `Ruoli`, `GPR`, `PRuoliPoss`, `PNotes`, `PWin`, `POverrides` — see schema below). Typically done via one-off openpyxl scripts rather than by hand.
-2. Run `python scripts/xlsx_to_sqlite.py`. It reads the xlsx and writes `WWDiscordtemplate.sqlite` + `.sql` into the **parent** folder (`ww/`, not this repo) — that's deliberate, keeps the repo from tracking a second copy.
-3. Copy the regenerated sqlite into this repo: `cp "../WWDiscordtemplate.sqlite" data.sqlite`.
+2. Run `python scripts/xlsx_to_sqlite.py`. It reads the xlsx and writes `WWDiscordtemplate.sqlite` + `.sql` into the **parent** folder (`ww/`, not this repo) — that's deliberate, keeps the repo from tracking a second copy. If working purely from the repo copy of the xlsx, point `SRC` at `website/WWDiscordtemplate.xlsx` instead.
+3. Copy the regenerated sqlite into this repo: `cp "../WWDiscordtemplate.sqlite" data.sqlite`. Also copy the edited xlsx back into `website/WWDiscordtemplate.xlsx` if you edited the working copy outside the repo, so the repo copy stays in sync.
 4. Verify in a browser (see "Testing changes" below) before committing.
 5. `git add`, commit, push. GitHub Pages redeploys automatically (check the Actions tab if the site doesn't update — a "build succeeded, deploy failed" hiccup has happened before; an empty commit retriggers it).
 
