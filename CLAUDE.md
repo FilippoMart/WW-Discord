@@ -65,8 +65,14 @@ Becchino is excluded from all groups (variable condition, no override rule). Fan
 
 - **Wilson score lower bound** (95% CI, z=1.96) is the standard ranking metric everywhere, not raw win %. Tiebreak chain for every Wilson-ranked table: **Wilson score desc → numerator (wins) desc → denominator (games) asc**. See `wilsonLowerBound()` / `sortByRate()` in `index.html`.
 - Leaderboards generally require a minimum sample size before a player appears (5 games for %Ombra/%Cattivo/Dark Souls, 50 opponents faced for %Underdog) — check the relevant `showX()` function for the exact threshold before adding a new one.
-- New games default to `"2 lune NO Giullare"` for Ruoli Possibili unless told otherwise.
+- **Dark Souls** (`showCattiviInnati()`) — win rate specifically *as a Cattivo* (Ombra + Aiutante roles), i.e. among games played with a Cattivo role, how often that specific role's win condition was actually met. Min 5 Cattivo games played, Wilson-ranked like everything else.
 - Play IDs: `YY-MM-DD_n`, always verify lexicographic order still matches chronological order after adding a game.
+- The "Composizione partita" game picker is a native `<select>` with one `<optgroup>` per month (label e.g. "Luglio 2026"), most recent month and most recent game within it first — see `populateGameSelect()`. This replaced an earlier custom autocomplete text input that had mobile/cross-browser reliability problems; don't reintroduce a custom widget without a specific reason.
+- Player history includes a cumulative **% Underdog** line chart (`underdogChartSvg()`, plain inline SVG, no chart library) — the running Giocatori-Battuti/Giocatori-Affrontati rate game-by-game in chronological order, not the per-game value. The first 5 games of each player's own history are skipped (too noisy / settling period) — this is per-player, not a global "first 5 games in the database" cutoff. X-axis labels: one per calendar month at that month's first point (format `YY-MM`), plus the very last point always labeled with its full day (`YY-MM-DD`).
+
+## Ruoli Possibili formatting convention
+
+No commas — separate items with spaces. "NO" and "SÌ" keywords always uppercase, and every item after them is capitalized (Amanti, Faida, Inquisizione, Megera — never lowercase). "faida lupi" is written as just "Faida". Items after NO: **Giullare always first** if present, then the rest alphabetically (case-insensitive). Items after SÌ: purely alphabetical, no special first item. Only one NO clause and one SÌ clause ever — merge if the source mentions "sì X" twice. Example: `"2 lune NO Giullare Vampiri SÌ Faida Fanatico"`. Default when unspecified: `"2 lune NO Giullare"`.
 
 ## Testing changes locally
 
