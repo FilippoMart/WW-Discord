@@ -945,7 +945,10 @@ function showPlayerHistory() {
         trials: cumTrials
       };
     });
-    const underdogChartHtml = underdogPoints.length > 0 ? underdogChartSvg(underdogPoints) : '';
+    const underdogChartPoints = underdogPoints.slice(5); // salta le prime 5 partite: assestamento iniziale, troppo rumoroso
+    const underdogChartHtml = underdogChartPoints.length > 0
+      ? underdogChartSvg(underdogChartPoints)
+      : '<div class="note-box">Servono più di 5 partite per mostrare l\'andamento.</div>';
 
     // Condizioni composte: solo per questa tabella, ESCLUSIVE rispetto alle atomiche
     // (se un ruolo corrisponde esattamente a una composta, conta solo per quella, non anche per i singoli token)
@@ -1062,7 +1065,7 @@ function showPlayerHistory() {
 
     document.getElementById('result').innerHTML += `
       <div class="note-box"><b>% Vittorie:</b> ${totalWins} / ${totalGames} (${pctVittorie}%)</div>
-      <div class="note-box"><b>Andamento % Underdog:</b> percentuale <i>cumulativa</i> partita dopo partita, in ordine cronologico (non il valore della singola partita). Stesso calcolo di "% Underdog": Giocatori Battuti / Giocatori Affrontati, sommati su tutte le partite fino a quel punto. Passa il mouse su un punto per vedere data e valore esatto.</div>
+      <div class="note-box"><b>Andamento % Underdog:</b> percentuale <i>cumulativa</i> partita dopo partita, in ordine cronologico (non il valore della singola partita). Stesso calcolo di "% Underdog": Giocatori Battuti / Giocatori Affrontati, sommati su tutte le partite fino a quel punto. Le prime 5 partite non sono mostrate (assestamento iniziale, troppo rumoroso). Passa il mouse su un punto per vedere data e valore esatto.</div>
       ${underdogChartHtml}
       ${streakHtml}
       ${compagniHtml}
