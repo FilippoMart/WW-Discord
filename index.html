@@ -297,10 +297,19 @@ function underdogChartSvg(points) {
     gridHtml += `<text x="${(padL - 6).toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="#9aa1ab">${val.toFixed(0)}%</text>`;
   }
 
-  const labelIdxs = n === 1 ? [0] : Array.from(new Set([0, Math.floor((n - 1) / 2), n - 1]));
+  // Un'etichetta al primo punto di ogni mese (solo anno-mese, es. "26-06"),
+  // più il giorno completo (senza numero partita) sull'ultimo punto in assoluto.
+  const monthLabelIdxs = [];
+  for (let i = 0; i < n; i++) {
+    const month = points[i].play.slice(0, 5);
+    const prevMonth = i > 0 ? points[i - 1].play.slice(0, 5) : null;
+    if (i === 0 || month !== prevMonth) monthLabelIdxs.push(i);
+  }
+  const labelIdxs = Array.from(new Set([...monthLabelIdxs, n - 1])).sort((a, b) => a - b);
   let xLabelsHtml = '';
   for (const i of labelIdxs) {
-    xLabelsHtml += `<text x="${xAt(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="#9aa1ab">${escapeHtml(points[i].play)}</text>`;
+    const label = i === n - 1 ? points[i].play.split('_')[0] : points[i].play.slice(0, 5);
+    xLabelsHtml += `<text x="${xAt(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="#9aa1ab">${escapeHtml(label)}</text>`;
   }
 
   const linePoints = points.map((p, i) => `${xAt(i).toFixed(1)},${yAt(p.pct).toFixed(1)}`).join(' ');
