@@ -20,7 +20,7 @@ Static, client-side stats website for Filippo's Discord-run Werewolf ("Lupus in 
 
 ## Data model (sqlite schema)
 
-- `players(nick PK, nome)` — nick is the Discord handle, nome is the real first name. The site displays `nome (nick)`.
+- `players(nick PK, nome, alias)` — nick is the Discord handle, nome is the real first name (kept clean, shown everywhere: game composition, RC catalog, etc.). `alias` is an optional alternate nickname (e.g. Andrea's "Lippo") shown **only** in the Storico giocatore dropdown as `nome (alias) (nick)` — never appended to `nome` itself, so it doesn't leak into other views.
 - `roles(ruolo PK, aura, misticismo, fazione, ombra, espansione, set_lune)` — `fazione` is a comma-separated list of win-condition tokens (e.g. `"Villaggio, Mistici, Criminali, Inquisizione"` for a composite role, or a single token like `"Capobranco"`). `ombra` is `Ombra` / `Aiutante` / `Non Ombra`.
 - `games(play PK)` — play id format is `YY-MM-DD_n` (e.g. `26-07-14_1`), chosen so lexicographic sort = chronological sort. `_n` increments for multiple games the same day.
 - `assignments(play, nick, ruolo)` — one row per player per game (plus a `ruolo = 'MASTER'` row identifying that game's moderator, excluded from all stats via `WHERE ruolo != 'MASTER'`).
