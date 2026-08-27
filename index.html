@@ -1133,9 +1133,12 @@ async function init() {
     allGames = games.map(g => g.play);
     populateGameSelect(allGames);
 
-    const players = execToObjects('SELECT nick, nome FROM players ORDER BY nome, nick');
+    const players = execToObjects('SELECT nick, nome, alias FROM players ORDER BY nome, nick');
     const playerSelect = document.getElementById('playerSelect');
-    playerSelect.innerHTML = players.map(p => `<option value="${escapeHtml(p.nick)}">${escapeHtml(p.nome)} (${escapeHtml(p.nick)})</option>`).join('');
+    playerSelect.innerHTML = players.map(p => {
+      const aliasTag = p.alias ? ` (${escapeHtml(p.alias)})` : '';
+      return `<option value="${escapeHtml(p.nick)}">${escapeHtml(p.nome)}${aliasTag} (${escapeHtml(p.nick)})</option>`;
+    }).join('');
 
     const roles = execToObjects('SELECT ruolo FROM roles ORDER BY ruolo');
     const roleSelect = document.getElementById('roleSelect');

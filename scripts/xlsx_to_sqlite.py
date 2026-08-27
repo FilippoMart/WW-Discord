@@ -17,7 +17,8 @@ cur = conn.cursor()
 cur.executescript("""
 CREATE TABLE players (
     nick TEXT PRIMARY KEY,
-    nome TEXT NOT NULL
+    nome TEXT NOT NULL,
+    alias TEXT  -- soprannome alternativo (es. "lippo" per Andrea), mostrato SOLO nel menu Storico giocatore, mai altrove
 );
 
 CREATE TABLE roles (
@@ -69,8 +70,8 @@ CREATE TABLE fazione_overrides (
 # --- players ---
 ws = wb["Giocatori"]
 rows = list(ws.iter_rows(values_only=True))[1:]  # skip header
-players = [(r[0], r[1]) for r in rows if r[0] is not None]
-cur.executemany("INSERT INTO players (nick, nome) VALUES (?, ?)", players)
+players = [(r[0], r[1], r[2] if len(r) > 2 else None) for r in rows if r[0] is not None]
+cur.executemany("INSERT INTO players (nick, nome, alias) VALUES (?, ?, ?)", players)
 
 # --- roles ---
 ws = wb["Ruoli"]
