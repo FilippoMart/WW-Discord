@@ -854,12 +854,16 @@ function showGameComposition() {
     const ruoliPossRows = execToObjects(`SELECT ruoli_possibili FROM game_ruoli_possibili WHERE play = ?`, [play]);
     const notesRows = execToObjects(`SELECT notes FROM game_notes WHERE play = ?`, [play]);
     const winRows = execToObjects(`SELECT win, win_ruoli FROM game_wins WHERE play = ?`, [play]);
+    const modalitaRows = execToObjects(`SELECT modalita FROM games WHERE play = ?`, [play]);
 
     const winRoles = (winRows.length ? (winRows[0].win_ruoli || '') : '').split(',').map(s => s.trim());
     const rowClasses = rows.map(r => winRoles.includes(r.Ruolo) ? 'win-row' : '');
     renderRows(['Giocatore', 'Ruolo', 'Condizioni Vittoria', 'Condizioni Vittoria Finale', 'Ombra'], rows, rowClasses);
 
     let extra = `<div class="note-box"><b>Giocatori:</b> ${numGiocatori}</div>`;
+    if (modalitaRows.length && modalitaRows[0].modalita) {
+      extra += `<div class="note-box"><b>Modalità:</b> ${escapeHtml(modalitaRows[0].modalita)}</div>`;
+    }
     if (ruoliPossRows.length && ruoliPossRows[0].ruoli_possibili) {
       extra += `<div class="note-box"><b>Ruoli Possibili:</b> ${escapeHtml(moonify(ruoliPossRows[0].ruoli_possibili))}</div>`;
     }

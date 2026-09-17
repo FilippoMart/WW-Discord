@@ -32,7 +32,8 @@ CREATE TABLE roles (
 );
 
 CREATE TABLE games (
-    play TEXT PRIMARY KEY
+    play TEXT PRIMARY KEY,
+    modalita TEXT  -- 'Discord' o 'Live' (in presenza); tutte le partite prima del 28-08-26 sono Discord
 );
 
 CREATE TABLE game_notes (
@@ -131,6 +132,12 @@ rows = list(ws.iter_rows(values_only=True))[1:]
 overrides = [(r[0], r[1], r[2]) for r in rows if r[0] is not None]
 cur.executemany("INSERT INTO fazione_overrides (play, nick, fazione_finale) VALUES (?, ?, ?)", overrides)
 
+# --- modalita (Discord/Live) ---
+ws = wb["PModalita"]
+rows = list(ws.iter_rows(values_only=True))[1:]
+modalita = [(r[1], r[0]) for r in rows if r[0] is not None]  # (modalita, play) for UPDATE
+cur.executemany("UPDATE games SET modalita = ? WHERE play = ?", modalita)
+
 conn.commit()
 
 # --- dump to .sql file ---
@@ -148,5 +155,6 @@ print("notes:", len(notes))
 print("wins:", len(wins))
 print("ruoli_possibili:", len(ruoli_possibili))
 print("fazione_overrides:", len(overrides))
+print("modalita:", len(modalita))
 print("DB written to:", DB_PATH)
 print("SQL written to:", SQL_PATH)
