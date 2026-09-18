@@ -37,6 +37,8 @@ For each assignment, take the **final** fazione tokens (role's `fazione`, or the
 
 **Do not use a blanket rule like "helper roles always win when the wolves win."** Always check the specific role's fazione tokens (visible in the site's "Ruoli e Condizioni (RC)" catalog) against what actually won. It usually agrees with the loose rule, but not always, and the token check is the one that's actually correct.
 
+**Standing rule — Villaggio win implies Mistici win when no Inquisizione is in the game:** whenever `win` includes `Villaggio` and no player's fazione (final) includes `Inquisizione` (i.e. no Inquisitore in that game), `win` must also include `Mistici`, crediting every Mistici-fazione role that game (Veggente, Mago, Guaritore, Strega, etc.) even if not separately mentioned. Apply this automatically for every new game — don't wait to be told.
+
 ## Condizioni Vittoria Finale (fazione_overrides)
 
 A role's fazione at game start isn't always its real win condition — mid-game events change it. When adding a new game, always re-read the notes for these five patterns and add a row to `POverrides` (play, nick, fazione_finale) for each match, before regenerating the sqlite:
