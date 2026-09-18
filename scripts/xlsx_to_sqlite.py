@@ -36,23 +36,28 @@ CREATE TABLE games (
     modalita TEXT  -- 'Discord' o 'Live' (in presenza); tutte le partite prima del 28-08-26 sono Discord
 );
 
-CREATE TABLE game_notes (
+-- Tabelle dati grezzi (TUTTE le partite, ogni modalità). Suffisso _all per distinguerle
+-- dalle view sottostanti con lo stesso nome "pubblico" usato da tutte le funzioni statistiche
+-- del sito, che invece mostrano solo le partite 'Discord Live' -- l'utente ha chiesto che le
+-- statistiche aggregate contino solo quelle, mentre "Composizione partita" (che interroga le
+-- tabelle _all direttamente) resta libera di mostrare qualunque partita.
+CREATE TABLE game_notes_all (
     play TEXT PRIMARY KEY REFERENCES games(play),
     notes TEXT
 );
 
-CREATE TABLE game_wins (
+CREATE TABLE game_wins_all (
     play TEXT PRIMARY KEY REFERENCES games(play),
     win TEXT,       -- winning faction(s)
     win_ruoli TEXT  -- winning starting roles; filled in manually after each game, often blank
 );
 
-CREATE TABLE game_ruoli_possibili (
+CREATE TABLE game_ruoli_possibili_all (
     play TEXT PRIMARY KEY REFERENCES games(play),
     ruoli_possibili TEXT  -- description of the role set/ruleset used for that game
 );
 
-CREATE TABLE assignments (
+CREATE TABLE assignments_all (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     play TEXT NOT NULL REFERENCES games(play),
     nick TEXT NOT NULL REFERENCES players(nick),
@@ -60,12 +65,41 @@ CREATE TABLE assignments (
     UNIQUE(play, nick)
 );
 
-CREATE TABLE fazione_overrides (
+CREATE TABLE fazione_overrides_all (
     play TEXT NOT NULL REFERENCES games(play),
     nick TEXT NOT NULL REFERENCES players(nick),
     fazione_finale TEXT,  -- condizioni vittoria finali, sostituisce r.fazione per questo assignment (es. vampirizzato, gildato, romeo, branco svegliato)
     PRIMARY KEY(play, nick)
 );
+
+-- View filtrate a 'Discord Live': stesso nome delle vecchie tabelle, così tutte le query
+-- statistiche esistenti (che referenziano "assignments", "game_wins", ecc.) restano invariate
+-- e filtrano automaticamente. showGameComposition() in index.html è l'unica funzione che
+-- interroga esplicitamente le tabelle _all per mostrare qualsiasi partita.
+CREATE VIEW game_notes AS
+    SELECT gn.* FROM game_notes_all gn
+    JOIN games g ON g.play = gn.play
+    WHERE g.modalita = 'Discord Live';
+
+CREATE VIEW game_wins AS
+    SELECT gw.* FROM game_wins_all gw
+    JOIN games g ON g.play = gw.play
+    WHERE g.modalita = 'Discord Live';
+
+CREATE VIEW game_ruoli_possibili AS
+    SELECT grp.* FROM game_ruoli_possibili_all grp
+    JOIN games g ON g.play = grp.play
+    WHERE g.modalita = 'Discord Live';
+
+CREATE VIEW assignments AS
+    SELECT a.* FROM assignments_all a
+    JOIN games g ON g.play = a.play
+    WHERE g.modalita = 'Discord Live';
+
+CREATE VIEW fazione_overrides AS
+    SELECT fo.* FROM fazione_overrides_all fo
+    JOIN games g ON g.play = fo.play
+    WHERE g.modalita = 'Discord Live';
 """)
 
 # --- players ---
@@ -100,7 +134,7 @@ for r in rows[1:]:
         ruolo = r[col_idx] if col_idx < len(r) else None
         if ruolo is not None:
             assignments.append((play, nick, ruolo))
-cur.executemany("INSERT INTO assignments (play, nick, ruolo) VALUES (?, ?, ?)", assignments)
+cur.executemany("INSERT INTO assignments_all (play, nick, ruolo) VALUES (?, ?, ?)", assignments)
 
 # --- game_notes ---
 ws = wb["PNotes"]
@@ -108,7 +142,7 @@ rows = list(ws.iter_rows(values_only=True))[1:]
 notes = [(r[0], r[1]) for r in rows if r[0] is not None]
 for play, _ in notes:
     cur.execute("INSERT OR IGNORE INTO games (play) VALUES (?)", (play,))
-cur.executemany("INSERT INTO game_notes (play, notes) VALUES (?, ?)", notes)
+cur.executemany("INSERT INTO game_notes_all (play, notes) VALUES (?, ?)", notes)
 
 # --- game_wins ---
 ws = wb["PWin"]
@@ -116,7 +150,7 @@ rows = list(ws.iter_rows(values_only=True))[1:]
 wins = [(r[0], r[1], r[2]) for r in rows if r[0] is not None]
 for play, _, _ in wins:
     cur.execute("INSERT OR IGNORE INTO games (play) VALUES (?)", (play,))
-cur.executemany("INSERT INTO game_wins (play, win, win_ruoli) VALUES (?, ?, ?)", wins)
+cur.executemany("INSERT INTO game_wins_all (play, win, win_ruoli) VALUES (?, ?, ?)", wins)
 
 # --- game_ruoli_possibili ---
 ws = wb["PRuoliPoss"]
@@ -124,15 +158,15 @@ rows = list(ws.iter_rows(values_only=True))[1:]
 ruoli_possibili = [(r[0], r[1]) for r in rows if r[0] is not None]
 for play, _ in ruoli_possibili:
     cur.execute("INSERT OR IGNORE INTO games (play) VALUES (?)", (play,))
-cur.executemany("INSERT INTO game_ruoli_possibili (play, ruoli_possibili) VALUES (?, ?)", ruoli_possibili)
+cur.executemany("INSERT INTO game_ruoli_possibili_all (play, ruoli_possibili) VALUES (?, ?)", ruoli_possibili)
 
 # --- fazione_overrides ---
 ws = wb["POverrides"]
 rows = list(ws.iter_rows(values_only=True))[1:]
 overrides = [(r[0], r[1], r[2]) for r in rows if r[0] is not None]
-cur.executemany("INSERT INTO fazione_overrides (play, nick, fazione_finale) VALUES (?, ?, ?)", overrides)
+cur.executemany("INSERT INTO fazione_overrides_all (play, nick, fazione_finale) VALUES (?, ?, ?)", overrides)
 
-# --- modalita (Discord/Live) ---
+# --- modalita (Discord/Live) --- MUST run before the views are queried by anything downstream
 ws = wb["PModalita"]
 rows = list(ws.iter_rows(values_only=True))[1:]
 modalita = [(r[1], r[0]) for r in rows if r[0] is not None]  # (modalita, play) for UPDATE
