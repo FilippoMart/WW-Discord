@@ -6,13 +6,13 @@ Static, client-side stats website for Filippo's Discord-run Werewolf ("Lupus in 
 
 - `index.html` — the entire site (HTML + inline CSS + inline JS, sql.js from CDN).
 - `data.sqlite` — the database the site reads. Must be regenerated and copied here after every data change (see pipeline below).
-- `WWDiscordtemplate.xlsx` — the source-of-truth spreadsheet (sheets: `Giocatori`, `Ruoli`, `GPR`, `PRuoliPoss`, `PNotes`, `PWin`, `POverrides` — see schema below). Committed here so the whole pipeline is portable across machines; edit this copy (or keep a working copy at `C:\Users\filip\Documents\_Filippo stuff\Giochi\ww\WWDiscordtemplate.xlsx` in sync with it — that's the path `scripts/xlsx_to_sqlite.py` reads from by default, adjust `SRC` if working from the repo copy directly).
+- `WWDiscordtemplate.xlsx` — the source-of-truth spreadsheet (sheets: `Giocatori`, `Ruoli`, `GPR`, `PRuoliPoss`, `PNotes`, `PWin`, `POverrides`, `PModalita` — see schema below). Committed here so the whole pipeline is portable across machines; edit this copy (or keep a working copy at `C:\Users\filip\Documents\_Filippo stuff\Giochi\ww\WWDiscordtemplate.xlsx` in sync with it — that's the path `scripts/xlsx_to_sqlite.py` reads from by default, adjust `SRC` if working from the repo copy directly).
 - `scripts/xlsx_to_sqlite.py` — rebuilds the sqlite (and a `.sql` dump) from the xlsx source of truth. Re-run after every xlsx edit.
 - `docs/` — rulebook PDFs (RegoleDueLune, RegoleTreLune, RuoliDueLune, RuoliTreLune), just reference material, not part of the pipeline.
 
 ## Pipeline: how to add or change data
 
-1. Edit `WWDiscordtemplate.xlsx` (sheets: `Giocatori`, `Ruoli`, `GPR`, `PRuoliPoss`, `PNotes`, `PWin`, `POverrides` — see schema below). Typically done via one-off openpyxl scripts rather than by hand.
+1. Edit `WWDiscordtemplate.xlsx` (sheets: `Giocatori`, `Ruoli`, `GPR`, `PRuoliPoss`, `PNotes`, `PWin`, `POverrides`, `PModalita` — see schema below). Typically done via one-off openpyxl scripts rather than by hand.
 2. Run `python scripts/xlsx_to_sqlite.py`. It reads the xlsx and writes `WWDiscordtemplate.sqlite` + `.sql` into the **parent** folder (`ww/`, not this repo) — that's deliberate, keeps the repo from tracking a second copy. If working purely from the repo copy of the xlsx, point `SRC` at `website/WWDiscordtemplate.xlsx` instead.
 3. Copy the regenerated sqlite into this repo: `cp "../WWDiscordtemplate.sqlite" data.sqlite`. Also copy the edited xlsx back into `website/WWDiscordtemplate.xlsx` if you edited the working copy outside the repo, so the repo copy stays in sync.
 4. Verify in a browser (see "Testing changes" below) before committing.
@@ -22,12 +22,23 @@ Static, client-side stats website for Filippo's Discord-run Werewolf ("Lupus in 
 
 - `players(nick PK, nome, alias)` — nick is the Discord handle, nome is the real first name (kept clean, shown everywhere: game composition, RC catalog, etc.). `alias` is an optional alternate nickname (e.g. Andrea's "Lippo") shown **only** in the Storico giocatore dropdown as `nome (alias) (nick)` — never appended to `nome` itself, so it doesn't leak into other views.
 - `roles(ruolo PK, aura, misticismo, fazione, ombra, espansione, set_lune)` — `fazione` is a comma-separated list of win-condition tokens (e.g. `"Villaggio, Mistici, Criminali, Inquisizione"` for a composite role, or a single token like `"Capobranco"`). `ombra` is `Ombra` / `Aiutante` / `Non Ombra`.
-- `games(play PK, modalita)` — play id format is `YY-MM-DD_n` (e.g. `26-07-14_1`), chosen so lexicographic sort = chronological sort. `_n` increments for multiple games the same day. For a multi-day game (e.g. async Discord play spread over several real days), use the **end date** (when it concluded) for the play id, and note the actual date span in `game_notes`. `modalita` values so far: `'Discord Live'` (synchronous Discord session — the historical default, renamed from plain `'Discord'`), `'Live'` (in-person), `'Discord in real time'` (a one-off async/slow-burn Discord game spanning multiple days). Ask the user which applies to anything not stated. Shown in Composizione partita.
-- `assignments(play, nick, ruolo)` — one row per player per game (plus a `ruolo = 'MASTER'` row identifying that game's moderator, excluded from all stats via `WHERE ruolo != 'MASTER'`).
-- `game_wins(play PK, win, win_ruoli)` — `win` is the free-text winning fazione(s) for that game (e.g. `"Villaggio, Mistici"`, `"Capobranco"`); `win_ruoli` is the comma list of specific role **names** credited with the win that game.
-- `game_notes(play PK, notes)` — free text, e.g. "Angelo di X, Giulietta di Y", vampirization events, Monaco's checks. This is the raw material `fazione_overrides` gets derived from.
-- `game_ruoli_possibili(play PK, ruoli_possibili)` — the ruleset/role-pool description for that game. Default when unspecified: **"2 lune NO Giullare"**.
-- `fazione_overrides(play, nick, fazione_finale)` — see "Condizioni Vittoria Finale" below.
+- `games(play PK, modalita)` — play id format is `YY-MM-DD_n` (e.g. `26-07-14_1`), chosen so lexicographic sort = chronological sort. `_n` increments for multiple games the same day. For a multi-day game (e.g. async Discord play spread over several real days), use the **end date** (when it concluded) for the play id, and note the actual date span in `game_notes`. `modalita` values so far: `'Discord Live'` (synchronous Discord session — the historical default, renamed from plain `'Discord'`), `'Live'` (in-person), `'Discord in real time'` (a one-off async/slow-burn Discord game spanning multiple days). Ask the user which applies to anything not stated. Shown in Composizione partita, and always the un-filtered `games` table itself (see "Discord Live filtering" below).
+- `assignments`, `game_wins`, `game_notes`, `game_ruoli_possibili`, `fazione_overrides` — **these are VIEWS**, not tables; see "Discord Live filtering" below for what they actually point at.
+  - `assignments(play, nick, ruolo)` — one row per player per game (plus a `ruolo = 'MASTER'` row identifying that game's moderator, excluded from all stats via `WHERE ruolo != 'MASTER'`).
+  - `game_wins(play PK, win, win_ruoli)` — `win` is the free-text winning fazione(s) for that game (e.g. `"Villaggio, Mistici"`, `"Capobranco"`); `win_ruoli` is the comma list of specific role **names** credited with the win that game.
+  - `game_notes(play PK, notes)` — free text, e.g. "Angelo di X, Giulietta di Y", vampirization events, Monaco's checks. This is the raw material `fazione_overrides` gets derived from.
+  - `game_ruoli_possibili(play PK, ruoli_possibili)` — the ruleset/role-pool description for that game. Default when unspecified: **"2 lune NO Giullare"**.
+  - `fazione_overrides(play, nick, fazione_finale)` — see "Condizioni Vittoria Finale" below.
+
+## Discord Live filtering (important — affects every stats query)
+
+The user asked (2026-09) that **all aggregate statistics only count `modalita = 'Discord Live'` games** — `'Live'` (in-person) and one-off modes like `'Discord in real time'` get saved to the database but must not move any ranking, percentage, or count on the site.
+
+Implementation: the real data lives in tables named `assignments_all`, `game_wins_all`, `game_notes_all`, `game_ruoli_possibili_all`, `fazione_overrides_all` (populated by `scripts/xlsx_to_sqlite.py`, unfiltered, every game ever entered). On top of those sit SQL **views** with the plain names (`assignments`, `game_wins`, `game_notes`, `game_ruoli_possibili`, `fazione_overrides`), each `JOIN`ed against `games` and filtered to `modalita = 'Discord Live'`. Every stats-computing function in `index.html` queries the plain (filtered) names and needs no per-function changes to respect the rule.
+
+The one exception is `showGameComposition()` (the "Composizione partita" lookup), which explicitly queries the `_all` tables — it's meant to show *any* game regardless of mode, since the user still wants to look up and save Live/other-mode games even though they're excluded from stats. The `games` table itself is never filtered (it has to list every game, including non-Discord-Live ones, for the game picker and the Modalità filter dropdown).
+
+**If you add a new stats-facing query, query the plain table names (the filtered views), not `_all`.** If you need to show a specific game's raw data regardless of mode (like Composizione partita does), use the `_all` tables explicitly.
 
 ## How a win gets credited (important, easy to get wrong)
 
