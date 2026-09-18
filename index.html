@@ -130,6 +130,7 @@
 <div class="panel">
   <h2>Composizione partita</h2>
   <div class="row">
+    <select id="modalitaFilter" onchange="onModalitaFilterChange()"></select>
     <select id="gameSelect"></select>
     <button onclick="showGameComposition()">Mostra composizione</button>
   </div>
@@ -168,6 +169,7 @@
 <script>
 let db = null;
 let allGames = [];
+let allGamesData = []; // [{play, modalita}], usato dal filtro modalità in Composizione partita
 
 function setStatus(msg) {
   document.getElementById('status').textContent = msg;
@@ -1123,6 +1125,14 @@ function populateGameSelect(games) {
   ).join('');
 }
 
+function onModalitaFilterChange() {
+  const modalita = document.getElementById('modalitaFilter').value;
+  const filtered = modalita === '__ALL__'
+    ? allGamesData.map(g => g.play)
+    : allGamesData.filter(g => g.modalita === modalita).map(g => g.play);
+  populateGameSelect(filtered);
+}
+
 async function init() {
   try {
     setStatus('Caricamento motore SQL...');
@@ -1133,8 +1143,14 @@ async function init() {
     const buf = await resp.arrayBuffer();
     db = new SQL.Database(new Uint8Array(buf));
 
-    const games = execToObjects('SELECT play FROM games ORDER BY play DESC');
+    const games = execToObjects('SELECT play, modalita FROM games ORDER BY play DESC');
+    allGamesData = games;
     allGames = games.map(g => g.play);
+
+    const modalitaValues = [...new Set(games.map(g => g.modalita).filter(Boolean))].sort();
+    const modalitaSelect = document.getElementById('modalitaFilter');
+    modalitaSelect.innerHTML = `<option value="__ALL__">Tutte le modalità</option>` +
+      modalitaValues.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
     populateGameSelect(allGames);
 
     const players = execToObjects('SELECT nick, nome, alias FROM players ORDER BY nome, nick');
