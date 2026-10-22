@@ -887,24 +887,29 @@ function showPlayerHistory() {
   const nick = document.getElementById('playerSelect').value;
   if (!nick) return;
   try {
-    const rows = execToObjects(`
-      SELECT a.play AS Partita, a.ruolo AS ruolo,
+    // Tutte le modalità (tabelle _all): la tabella delle partite le mostra tutte con la colonna Modalità,
+    // ma le statistiche sotto usano solo le righe 'Discord Live' (vedi `rows` più avanti).
+    const allRows = execToObjects(`
+      SELECT a.play AS Partita, g.modalita AS Modalita, a.ruolo AS ruolo,
              COALESCE(r.fazione, '') AS "Condizioni Vittoria",
              COALESCE(fo.fazione_finale, r.fazione, '') AS "Condizioni Vittoria Finale",
              COALESCE(r.ombra, '') AS Ombra,
              gw.win AS win, gw.win_ruoli AS win_ruoli,
-             (SELECT COUNT(*) FROM assignments a2 WHERE a2.play = a.play AND a2.ruolo != 'MASTER') AS N
-      FROM assignments a
+             (SELECT COUNT(*) FROM assignments_all a2 WHERE a2.play = a.play AND a2.ruolo != 'MASTER') AS N
+      FROM assignments_all a
+      JOIN games g ON g.play = a.play
       LEFT JOIN roles r ON r.ruolo = a.ruolo
-      LEFT JOIN fazione_overrides fo ON fo.play = a.play AND fo.nick = a.nick
-      LEFT JOIN game_wins gw ON gw.play = a.play
+      LEFT JOIN fazione_overrides_all fo ON fo.play = a.play AND fo.nick = a.nick
+      LEFT JOIN game_wins_all gw ON gw.play = a.play
       WHERE a.nick = ? AND a.ruolo != 'MASTER'
       ORDER BY a.play
     `, [nick]);
-    const result = rows.map(row => {
+    const rows = allRows.filter(r => r.Modalita === 'Discord Live'); // solo queste contano nelle statistiche
+    const result = allRows.map(row => {
       const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
       return {
         Partita: row.Partita,
+        'Modalità': row.Modalita || '',
         Ruolo: row.ruolo,
         'Condizioni Vittoria': row['Condizioni Vittoria'],
         'Condizioni Vittoria Finale': row['Condizioni Vittoria Finale'],
@@ -912,13 +917,14 @@ function showPlayerHistory() {
         Vittoria: winRoles.includes(row.ruolo) ? 'Sì' : 'No'
       };
     });
-    renderRows(['Partita', 'Ruolo', 'Condizioni Vittoria', 'Condizioni Vittoria Finale', 'Ombra', 'Vittoria'], result);
+    renderRows(['Partita', 'Modalità', 'Ruolo', 'Condizioni Vittoria', 'Condizioni Vittoria Finale', 'Ombra', 'Vittoria'], result);
     document.getElementById('result').innerHTML += `
       <div class="note-box"><b>Condizioni Vittoria Finale:</b> uguali a quelle di inizio partita, tranne per eventi accaduti durante la partita (dedotti dalle note): il romeo di Giulietta prende <b>Romeo</b>, i gildati del Capogilda prendono <b>Criminali</b>, i vampirizzati prendono <b>Vampiro</b>, il Contadino Lupo svegliato prende <b>Capobranco, Lupo Reietto</b>, il Fanatico prende la condizione di vittoria del ruolo di cui è fanatico. Tutte le statistiche sottostanti usano questa colonna, non quella di inizio partita.</div>
+      <div class="note-box"><b>Modalità:</b> la tabella mostra tutte le partite del giocatore, in qualsiasi modalità. Le statistiche sotto (% vittorie, grafico, streak, condizioni) contano <b>solo le partite Discord Live</b>.</div>
     `;
 
     const totalGames = rows.length;
-    const totalWins = result.filter(r => r.Vittoria === 'Sì').length;
+    const totalWins = result.filter(r => r['Modalità'] === 'Discord Live' && r.Vittoria === 'Sì').length;
 
     // Andamento % Underdog nel tempo: cumulativo partita dopo partita, in ordine cronologico
     let cumSuccesses = 0, cumTrials = 0;
@@ -1081,10 +1087,11 @@ function showRoleHistory() {
   if (!ruolo) return;
   try {
     const rows = execToObjects(`
-      SELECT a.play AS Partita, p.nome AS Giocatore, a.nick AS nick, gw.win_ruoli AS win_ruoli
-      FROM assignments a
+      SELECT a.play AS Partita, g.modalita AS Modalita, p.nome AS Giocatore, a.nick AS nick, gw.win_ruoli AS win_ruoli
+      FROM assignments_all a
+      JOIN games g ON g.play = a.play
       JOIN players p ON p.nick = a.nick
-      LEFT JOIN game_wins gw ON gw.play = a.play
+      LEFT JOIN game_wins_all gw ON gw.play = a.play
       WHERE a.ruolo = ?
       ORDER BY a.play
     `, [ruolo]);
@@ -1092,16 +1099,18 @@ function showRoleHistory() {
       const winRoles = (row.win_ruoli || '').split(',').map(s => s.trim());
       return {
         Partita: row.Partita,
+        'Modalità': row.Modalita || '',
         Giocatore: `${row.Giocatore} (${row.nick})`,
         Vittoria: winRoles.includes(ruolo) ? 'Sì' : 'No'
       };
     });
-    renderRows(['Partita', 'Giocatore', 'Vittoria'], result);
-    const volte = result.length;
-    const vinte = result.filter(r => r.Vittoria === 'Sì').length;
+    renderRows(['Partita', 'Modalità', 'Giocatore', 'Vittoria'], result);
+    const live = result.filter(r => r['Modalità'] === 'Discord Live'); // solo Discord Live conta nelle statistiche
+    const volte = live.length;
+    const vinte = live.filter(r => r.Vittoria === 'Sì').length;
     const pct = volte > 0 ? (vinte / volte * 100).toFixed(1) : '0.0';
     document.getElementById('result').innerHTML += `
-      <div class="note-box"><b>${escapeHtml(ruolo)}:</b> giocato ${volte} volte, vinto ${vinte} (${pct}%)</div>
+      <div class="note-box"><b>${escapeHtml(ruolo)}:</b> giocato ${volte} volte, vinto ${vinte} (${pct}%) <i>(solo partite Discord Live; la tabella mostra tutte le modalità)</i></div>
     `;
   } catch (e) { showError(e); }
 }
