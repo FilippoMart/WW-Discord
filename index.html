@@ -112,18 +112,19 @@
 <div class="panel">
   <h2>Statistiche rapide</h2>
   <div class="row">
-    <button onclick="showWinRates()">% Vittorie</button>
-    <button onclick="showUnderdogWin()">% Underdog</button>
-    <button onclick="showShadowCounts()">% Ombra</button>
-    <button onclick="showCattivoCounts()">% Cattivo</button>
-    <button onclick="showCattiviInnati()">Dark Souls</button>
-    <button onclick="showRolesCatalog()">Ruoli e Condizioni (RC)</button>
-    <button onclick="showRoleRanking()">Ranking Ruoli</button>
-    <button onclick="showAffezionati()">Affezionati al ruolo</button>
-    <button onclick="showStreaks()">Serie</button>
-    <button onclick="showMasterCounts()">Master</button>
-    <button onclick="showPlayerCountDistribution()">Partite per numero di giocatori</button>
-    <button onclick="showRuoliPossibiliDistribution()">Partite per set di ruoli possibili</button>
+    <select id="statsModalita"></select>
+    <button onclick="runStat(showWinRates)">% Vittorie</button>
+    <button onclick="runStat(showUnderdogWin)">% Underdog</button>
+    <button onclick="runStat(showShadowCounts)">% Ombra</button>
+    <button onclick="runStat(showCattivoCounts)">% Cattivo</button>
+    <button onclick="runStat(showCattiviInnati)">Dark Souls</button>
+    <button onclick="runStat(showRolesCatalog)">Ruoli e Condizioni (RC)</button>
+    <button onclick="runStat(showRoleRanking)">Ranking Ruoli</button>
+    <button onclick="runStat(showAffezionati)">Affezionati al ruolo</button>
+    <button onclick="runStat(showStreaks)">Serie</button>
+    <button onclick="runStat(showMasterCounts)">Master</button>
+    <button onclick="runStat(showPlayerCountDistribution)">Partite per numero di giocatori</button>
+    <button onclick="runStat(showRuoliPossibiliDistribution)">Partite per set di ruoli possibili</button>
   </div>
 </div>
 
@@ -1134,6 +1135,21 @@ function populateGameSelect(games) {
   ).join('');
 }
 
+// Statistiche rapide: le view SQL filtrano su filtro_modalita (default 'Discord Live'). Qui lo impostiamo
+// al valore scelto nel menu solo per la durata della statistica, poi lo ripristiniamo, così tutto il resto
+// del sito (storico, composizione, ecc.) resta sempre su 'Discord Live'.
+function runStat(fn) {
+  const sel = document.getElementById('statsModalita').value || 'Discord Live';
+  db.run('UPDATE filtro_modalita SET valore = ?', [sel]);
+  try { fn(); }
+  finally { db.run("UPDATE filtro_modalita SET valore = 'Discord Live'"); }
+  if (sel !== 'Discord Live') {
+    const label = sel === '__ALL__' ? 'tutte le modalità' : sel;
+    document.getElementById('result').insertAdjacentHTML('afterbegin',
+      `<div class="note-box"><b>Modalità:</b> statistiche calcolate su <b>${escapeHtml(label)}</b> (di default solo Discord Live).</div>`);
+  }
+}
+
 function onModalitaFilterChange() {
   const modalita = document.getElementById('modalitaFilter').value;
   const filtered = modalita === '__ALL__'
@@ -1161,6 +1177,10 @@ async function init() {
     modalitaSelect.innerHTML = `<option value="__ALL__">Tutte le modalità</option>` +
       modalitaValues.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
     populateGameSelect(allGames);
+    const statsSelect = document.getElementById('statsModalita');
+    statsSelect.innerHTML = modalitaValues.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('')
+      + `<option value="__ALL__">Tutte le modalità</option>`;
+    statsSelect.value = 'Discord Live';
 
     const players = execToObjects('SELECT nick, nome, alias FROM players ORDER BY nome, nick');
     const playerSelect = document.getElementById('playerSelect');

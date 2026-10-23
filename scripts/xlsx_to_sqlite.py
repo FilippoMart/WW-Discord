@@ -72,34 +72,40 @@ CREATE TABLE fazione_overrides_all (
     PRIMARY KEY(play, nick)
 );
 
--- View filtrate a 'Discord Live': stesso nome delle vecchie tabelle, così tutte le query
+-- Filtro modalità usato dalle view qui sotto: di default 'Discord Live'. Il sito lo cambia a runtime
+-- (UPDATE in memoria, solo per la durata di una statistica rapida) in base al menu "Statistiche rapide";
+-- il valore speciale '__ALL__' disattiva il filtro.
+CREATE TABLE filtro_modalita (valore TEXT NOT NULL);
+INSERT INTO filtro_modalita (valore) VALUES ('Discord Live');
+
+-- View filtrate (di default a 'Discord Live', vedi filtro_modalita): stesso nome delle vecchie tabelle, così tutte le query
 -- statistiche esistenti (che referenziano "assignments", "game_wins", ecc.) restano invariate
 -- e filtrano automaticamente. showGameComposition() in index.html è l'unica funzione che
 -- interroga esplicitamente le tabelle _all per mostrare qualsiasi partita.
 CREATE VIEW game_notes AS
     SELECT gn.* FROM game_notes_all gn
     JOIN games g ON g.play = gn.play
-    WHERE g.modalita = 'Discord Live';
+    WHERE g.modalita = (SELECT valore FROM filtro_modalita) OR (SELECT valore FROM filtro_modalita) = '__ALL__';
 
 CREATE VIEW game_wins AS
     SELECT gw.* FROM game_wins_all gw
     JOIN games g ON g.play = gw.play
-    WHERE g.modalita = 'Discord Live';
+    WHERE g.modalita = (SELECT valore FROM filtro_modalita) OR (SELECT valore FROM filtro_modalita) = '__ALL__';
 
 CREATE VIEW game_ruoli_possibili AS
     SELECT grp.* FROM game_ruoli_possibili_all grp
     JOIN games g ON g.play = grp.play
-    WHERE g.modalita = 'Discord Live';
+    WHERE g.modalita = (SELECT valore FROM filtro_modalita) OR (SELECT valore FROM filtro_modalita) = '__ALL__';
 
 CREATE VIEW assignments AS
     SELECT a.* FROM assignments_all a
     JOIN games g ON g.play = a.play
-    WHERE g.modalita = 'Discord Live';
+    WHERE g.modalita = (SELECT valore FROM filtro_modalita) OR (SELECT valore FROM filtro_modalita) = '__ALL__';
 
 CREATE VIEW fazione_overrides AS
     SELECT fo.* FROM fazione_overrides_all fo
     JOIN games g ON g.play = fo.play
-    WHERE g.modalita = 'Discord Live';
+    WHERE g.modalita = (SELECT valore FROM filtro_modalita) OR (SELECT valore FROM filtro_modalita) = '__ALL__';
 """)
 
 # --- players ---
