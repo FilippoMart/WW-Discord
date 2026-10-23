@@ -33,6 +33,12 @@
     margin-bottom: 20px;
   }
   .panel h2 { margin-top: 0; font-size: 1.05rem; }
+  details.panel > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; user-select: none; }
+  details.panel > summary::-webkit-details-marker { display: none; }
+  details.panel > summary::before { content: ''; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid currentColor; transition: transform .15s; }
+  details.panel:not([open]) > summary::before { transform: rotate(-90deg); }
+  details.panel > summary h2 { margin: 0; }
+  details.panel[open] > summary { margin-bottom: 10px; }
   .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   button {
     background: var(--accent);
@@ -128,38 +134,38 @@
   </div>
 </div>
 
-<div class="panel">
-  <h2>Composizione partita</h2>
+<details class="panel" open>
+  <summary><h2>Composizione partita</h2></summary>
   <div class="row">
     <select id="modalitaFilter" onchange="onModalitaFilterChange()"></select>
     <select id="gameSelect"></select>
     <button onclick="showGameComposition()">Mostra composizione</button>
   </div>
-</div>
+</details>
 
-<div class="panel">
-  <h2>Storico giocatore</h2>
+<details class="panel" open>
+  <summary><h2>Storico giocatore</h2></summary>
   <div class="row">
     <select id="playerSelect"></select>
     <button onclick="showPlayerHistory()">Mostra storico</button>
   </div>
-</div>
+</details>
 
-<div class="panel">
-  <h2>Storico per Ruolo</h2>
+<details class="panel" open>
+  <summary><h2>Storico per Ruolo</h2></summary>
   <div class="row">
     <select id="roleSelect"></select>
     <button onclick="showRoleHistory()">Mostra storico ruolo</button>
   </div>
-</div>
+</details>
 
-<div class="panel">
-  <h2>Query SQL personalizzata</h2>
+<details class="panel" open>
+  <summary><h2>Query SQL personalizzata</h2></summary>
   <textarea id="sqlBox" placeholder="SELECT * FROM players;"></textarea>
   <div class="row" style="margin-top:10px;">
     <button onclick="runCustomQuery()">Esegui</button>
   </div>
-</div>
+</details>
 
 <div class="panel">
   <h2>Risultato</h2>
