@@ -1153,7 +1153,7 @@ function runStat(fn) {
   try { fn(); }
   finally { if (hasFilter) db.run("UPDATE filtro_modalita SET valore = 'Discord Live'"); }
   if (sel !== 'Discord Live') {
-    const label = sel === '__ALL__' ? 'tutte le modalità' : sel;
+    const label = sel === '__ALL__' ? 'tutte le modalità' : sel === '__LIVE__' ? 'Tutte Live (Discord Live + In persona Live)' : sel;
     document.getElementById('result').insertAdjacentHTML('afterbegin',
       `<div class="note-box"><b>Modalità:</b> statistiche calcolate su <b>${escapeHtml(label)}</b> (di default solo Discord Live).</div>`);
   }
@@ -1161,9 +1161,12 @@ function runStat(fn) {
 
 function onModalitaFilterChange() {
   const modalita = document.getElementById('modalitaFilter').value;
+  const LIVE = ['Discord Live', 'In persona Live']; // "Tutte Live" = Discord Live + In persona Live
   const filtered = modalita === '__ALL__'
     ? allGamesData.map(g => g.play)
-    : allGamesData.filter(g => g.modalita === modalita).map(g => g.play);
+    : modalita === '__LIVE__'
+      ? allGamesData.filter(g => LIVE.includes(g.modalita)).map(g => g.play)
+      : allGamesData.filter(g => g.modalita === modalita).map(g => g.play);
   populateGameSelect(filtered);
 }
 
@@ -1183,12 +1186,12 @@ async function init() {
 
     const modalitaValues = [...new Set(games.map(g => g.modalita).filter(Boolean))].sort();
     const modalitaSelect = document.getElementById('modalitaFilter');
-    modalitaSelect.innerHTML = `<option value="__ALL__">Tutte le modalità</option>` +
+    modalitaSelect.innerHTML = `<option value="__ALL__">Tutte le modalità</option><option value="__LIVE__">Tutte Live</option>` +
       modalitaValues.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
     populateGameSelect(allGames);
     const statsSelect = document.getElementById('statsModalita');
     statsSelect.innerHTML = modalitaValues.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('')
-      + `<option value="__ALL__">Tutte le modalità</option>`;
+      + `<option value="__LIVE__">Tutte Live</option><option value="__ALL__">Tutte le modalità</option>`;
     statsSelect.value = 'Discord Live';
 
     const players = execToObjects('SELECT nick, nome, alias FROM players ORDER BY nome, nick');

@@ -33,7 +33,7 @@ CREATE TABLE roles (
 
 CREATE TABLE games (
     play TEXT PRIMARY KEY,
-    modalita TEXT  -- 'Discord' o 'Live' (in presenza); tutte le partite prima del 28-08-26 sono Discord
+    modalita TEXT  -- 'Discord Live', 'In persona Live' (in presenza), 'Discord in real time'
 );
 
 -- Tabelle dati grezzi (TUTTE le partite, ogni modalità). Suffisso _all per distinguerle
@@ -74,7 +74,7 @@ CREATE TABLE fazione_overrides_all (
 
 -- Filtro modalità usato dalle view qui sotto: di default 'Discord Live'. Il sito lo cambia a runtime
 -- (UPDATE in memoria, solo per la durata di una statistica rapida) in base al menu "Statistiche rapide";
--- il valore speciale '__ALL__' disattiva il filtro.
+-- '__ALL__' disattiva il filtro, '__LIVE__' = Discord Live + In persona Live ("Tutte Live").
 CREATE TABLE filtro_modalita (valore TEXT NOT NULL);
 INSERT INTO filtro_modalita (valore) VALUES ('Discord Live');
 
@@ -85,27 +85,32 @@ INSERT INTO filtro_modalita (valore) VALUES ('Discord Live');
 CREATE VIEW game_notes AS
     SELECT gn.* FROM game_notes_all gn
     JOIN games g ON g.play = gn.play
-    WHERE g.modalita = (SELECT valore FROM filtro_modalita) OR (SELECT valore FROM filtro_modalita) = '__ALL__';
+    WHERE g.modalita = (SELECT valore FROM filtro_modalita) OR (SELECT valore FROM filtro_modalita) = '__ALL__'
+       OR ((SELECT valore FROM filtro_modalita) = '__LIVE__' AND g.modalita IN ('Discord Live', 'In persona Live'));
 
 CREATE VIEW game_wins AS
     SELECT gw.* FROM game_wins_all gw
     JOIN games g ON g.play = gw.play
-    WHERE g.modalita = (SELECT valore FROM filtro_modalita) OR (SELECT valore FROM filtro_modalita) = '__ALL__';
+    WHERE g.modalita = (SELECT valore FROM filtro_modalita) OR (SELECT valore FROM filtro_modalita) = '__ALL__'
+       OR ((SELECT valore FROM filtro_modalita) = '__LIVE__' AND g.modalita IN ('Discord Live', 'In persona Live'));
 
 CREATE VIEW game_ruoli_possibili AS
     SELECT grp.* FROM game_ruoli_possibili_all grp
     JOIN games g ON g.play = grp.play
-    WHERE g.modalita = (SELECT valore FROM filtro_modalita) OR (SELECT valore FROM filtro_modalita) = '__ALL__';
+    WHERE g.modalita = (SELECT valore FROM filtro_modalita) OR (SELECT valore FROM filtro_modalita) = '__ALL__'
+       OR ((SELECT valore FROM filtro_modalita) = '__LIVE__' AND g.modalita IN ('Discord Live', 'In persona Live'));
 
 CREATE VIEW assignments AS
     SELECT a.* FROM assignments_all a
     JOIN games g ON g.play = a.play
-    WHERE g.modalita = (SELECT valore FROM filtro_modalita) OR (SELECT valore FROM filtro_modalita) = '__ALL__';
+    WHERE g.modalita = (SELECT valore FROM filtro_modalita) OR (SELECT valore FROM filtro_modalita) = '__ALL__'
+       OR ((SELECT valore FROM filtro_modalita) = '__LIVE__' AND g.modalita IN ('Discord Live', 'In persona Live'));
 
 CREATE VIEW fazione_overrides AS
     SELECT fo.* FROM fazione_overrides_all fo
     JOIN games g ON g.play = fo.play
-    WHERE g.modalita = (SELECT valore FROM filtro_modalita) OR (SELECT valore FROM filtro_modalita) = '__ALL__';
+    WHERE g.modalita = (SELECT valore FROM filtro_modalita) OR (SELECT valore FROM filtro_modalita) = '__ALL__'
+       OR ((SELECT valore FROM filtro_modalita) = '__LIVE__' AND g.modalita IN ('Discord Live', 'In persona Live'));
 """)
 
 # --- players ---
