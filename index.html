@@ -1140,9 +1140,12 @@ function populateGameSelect(games) {
 // del sito (storico, composizione, ecc.) resta sempre su 'Discord Live'.
 function runStat(fn) {
   const sel = document.getElementById('statsModalita').value || 'Discord Live';
-  db.run('UPDATE filtro_modalita SET valore = ?', [sel]);
+  // Se per qualche motivo il database caricato non ha la tabella (copia vecchia in cache), la statistica
+  // parte comunque con il filtro di default invece di rompersi.
+  let hasFilter = true;
+  try { db.run('UPDATE filtro_modalita SET valore = ?', [sel]); } catch (e) { hasFilter = false; }
   try { fn(); }
-  finally { db.run("UPDATE filtro_modalita SET valore = 'Discord Live'"); }
+  finally { if (hasFilter) db.run("UPDATE filtro_modalita SET valore = 'Discord Live'"); }
   if (sel !== 'Discord Live') {
     const label = sel === '__ALL__' ? 'tutte le modalità' : sel;
     document.getElementById('result').insertAdjacentHTML('afterbegin',
@@ -1163,7 +1166,7 @@ async function init() {
     setStatus('Caricamento motore SQL...');
     const SQL = await initSqlJs({ locateFile: file => `https://sql.js.org/dist/${file}` });
     setStatus('Caricamento database...');
-    const resp = await fetch('data.sqlite');
+    const resp = await fetch('data.sqlite?t=' + Date.now(), { cache: 'no-store' }); // evita il database vecchio in cache
     if (!resp.ok) throw new Error('Impossibile caricare data.sqlite (' + resp.status + ')');
     const buf = await resp.arrayBuffer();
     db = new SQL.Database(new Uint8Array(buf));
