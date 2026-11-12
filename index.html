@@ -493,7 +493,10 @@ function showPlayerCountDistribution() {
     `);
     const counts = {};
     for (const row of rows) counts[row.n] = (counts[row.n] || 0) + 1;
-    const sizes = [8, 9, 10, 11, 12, 13, 14, 15];
+    // intervallo dinamico: almeno 7-15, esteso se compaiono partite più piccole/grandi
+    const present = Object.keys(counts).map(Number);
+    const lo = Math.min(7, ...present), hi = Math.max(15, ...present);
+    const sizes = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
     const result = sizes.map(s => ({ Numero_Giocatori: s, Numero_Partite: counts[s] || 0 }));
     renderRows(['Numero_Giocatori', 'Numero_Partite'], result);
   } catch (e) { showError(e); }
