@@ -105,3 +105,7 @@ Serve the folder (e.g. `python -m http.server 8532` from inside `website/`) and 
 ## Git push note
 
 The first push from a fresh environment may need an interactive browser popup for GitHub auth (Git Credential Manager) — if a push hangs or fails silently in an automated context, it may need to be run manually once by Filippo; after that the cached credential works fine.
+
+## Player labels (display)
+
+Every place that shows a player must use `playerLabel(nick)` (defined in `index.html`): `nome (alias)` if the player has an alias, else `nome (nick)`. Same as the Storico giocatore dropdown. Never build `nome (nick)` by hand in a new stat/table.

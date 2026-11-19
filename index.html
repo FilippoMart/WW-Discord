@@ -226,6 +226,19 @@ function execToObjects(sql, params = []) {
   return rows;
 }
 
+// Etichetta coerente di un giocatore ovunque nel sito: "nome (alias)" se c'è l'alias, altrimenti "nome (nick)".
+// Stessa regola del menù Storico giocatore.
+let _playerLabels = null;
+function playerLabel(nick) {
+  if (!_playerLabels) {
+    _playerLabels = {};
+    for (const p of execToObjects('SELECT nick, nome, alias FROM players')) {
+      _playerLabels[p.nick] = p.alias ? `${p.nome} (${p.alias})` : `${p.nome} (${p.nick})`;
+    }
+  }
+  return _playerLabels[nick] || nick;
+}
+
 function isWriteQuery(sql) {
   return /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|REPLACE|TRUNCATE|ATTACH|DETACH)\b/i.test(sql);
 }
@@ -339,7 +352,7 @@ function showShadowCounts() {
       if (row.ombra === 'Ombra') stats[row.nick].ombra += 1;
     }
     let result = Object.entries(stats).filter(([, s]) => s.total >= 5).map(([nick, s]) => ({
-      Giocatore: `${s.nome} (${nick})`,
+      Giocatore: playerLabel(nick),
       Volte_Ombra: s.ombra,
       'Giocate': s.total,
       'Ombra %': ((s.ombra / s.total) * 100).toFixed(1) + '%',
@@ -369,7 +382,7 @@ function showCattivoCounts() {
       if (row.ombra === 'Ombra' || row.ombra === 'Aiutante') stats[row.nick].cattivo += 1;
     }
     let result = Object.entries(stats).filter(([, s]) => s.total >= 5).map(([nick, s]) => ({
-      Giocatore: `${s.nome} (${nick})`,
+      Giocatore: playerLabel(nick),
       Volte_Cattivo: s.cattivo,
       'Giocate': s.total,
       'Cattivo %': ((s.cattivo / s.total) * 100).toFixed(1) + '%',
@@ -401,7 +414,7 @@ function showCattiviInnati() {
       if (winRoles.includes(row.ruolo)) stats[row.nick].vinte += 1;
     }
     let result = Object.entries(stats).filter(([, s]) => s.total >= 5).map(([nick, s]) => ({
-      Giocatore: `${s.nome} (${nick})`,
+      Giocatore: playerLabel(nick),
       Vinte: s.vinte,
       'Giocate da Cattivo': s.total,
       '% Win': ((s.vinte / s.total) * 100).toFixed(1) + '%',
@@ -552,7 +565,7 @@ function showAffezionati() {
       for (const e of entries.filter(e => e.pct === maxPct)) {
         result.push({
           Ruolo: ruolo,
-          Giocatore: `${nomeByNick[e.nick]} (${e.nick})`,
+          Giocatore: playerLabel(e.nick),
           Volte: e.count,
           'Giocate': e.total,
           Percentuale: (e.pct * 100).toFixed(1) + '%'
@@ -572,7 +585,7 @@ function showMasterCounts() {
                      'Lupo Reietto', 'Lupo Solitario', 'Vampiro', 'Negromante', 'Nosferatu', 'Posseduto'];
 
     const winRows = execToObjects(`
-      SELECT p.nome || ' (' || a.nick || ')' AS Master, gw.win AS Vittoria
+      SELECT a.nick AS nick, gw.win AS Vittoria
       FROM assignments a
       JOIN players p ON p.nick = a.nick
       JOIN game_wins gw ON gw.play = a.play
@@ -580,6 +593,7 @@ function showMasterCounts() {
     `);
     const stats = {};
     for (const row of winRows) {
+      row.Master = playerLabel(row.nick);
       if (!stats[row.Master]) stats[row.Master] = { total: 0, factions: {} };
       stats[row.Master].total += 1;
       const factions = (row.Vittoria || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -691,7 +705,7 @@ function showStreaks() {
 
     function topN(entries, getValue) {
       const max = Math.max(...entries.map(([, s]) => getValue(s)));
-      const leaders = entries.filter(([, s]) => getValue(s) === max).map(([, s]) => s.nome);
+      const leaders = entries.filter(([, s]) => getValue(s) === max).map(([nick]) => playerLabel(nick));
       return { max, leaders: leaders.join(', ') };
     }
 
@@ -743,7 +757,7 @@ function computeCompagniStats() {
         if (!pairs[key]) {
           pairs[key] = {
             nickA: a.nick, nickB: b.nick,
-            labelA: `${a.nome} (${a.nick})`, labelB: `${b.nome} (${b.nick})`,
+            labelA: playerLabel(a.nick), labelB: playerLabel(b.nick),
             insieme: 0, vinteInsieme: 0, perseInsieme: 0
           };
         }
@@ -791,7 +805,7 @@ function showUnderdogWin() {
     }
 
     let result = Object.entries(stats).filter(([, s]) => s.vittorie > 0 && s.trials >= 50).map(([nick, s]) => ({
-      Giocatore: `${s.nome} (${nick})`,
+      Giocatore: playerLabel(nick),
       'Giocatori Battuti': s.successes,
       'Giocatori Affrontati': s.trials,
       '% Underdog': (s.successes / s.trials * 100).toFixed(1) + '%',
@@ -831,7 +845,7 @@ function showWinRates() {
       if (winRoles.includes(row.ruolo)) stats[nick].wins += 1;
     }
     let result = Object.entries(stats).filter(([, s]) => s.total >= 5).map(([nick, s]) => ({
-      Giocatore: `${s.nome} (${nick})`,
+      Giocatore: playerLabel(nick),
       Vinte: s.wins,
       Giocate: s.total,
       'Win %': ((s.wins / s.total) * 100).toFixed(1) + '%',
@@ -850,7 +864,7 @@ function showGameComposition() {
   if (!play) return;
   try {
     const rows = execToObjects(`
-      SELECT p.nome AS Giocatore, a.ruolo AS Ruolo,
+      SELECT a.nick AS nick, p.nome AS Giocatore, a.ruolo AS Ruolo,
              COALESCE(r.fazione, '') AS "Condizioni Vittoria",
              COALESCE(fo.fazione_finale, r.fazione, '') AS "Condizioni Vittoria Finale",
              COALESCE(r.ombra, '') AS Ombra
@@ -862,6 +876,7 @@ function showGameComposition() {
       ORDER BY CASE WHEN a.ruolo = 'MASTER' THEN 0 ELSE 1 END, r.fazione, Giocatore
     `, [play]);
 
+    rows.forEach(r => { r.Giocatore = playerLabel(r.nick); });
     const numGiocatori = rows.filter(r => r.Ruolo !== 'MASTER').length;
     const ruoliPossRows = execToObjects(`SELECT ruoli_possibili FROM game_ruoli_possibili_all WHERE play = ?`, [play]);
     const notesRows = execToObjects(`SELECT notes FROM game_notes_all WHERE play = ?`, [play]);
@@ -1110,7 +1125,7 @@ function showRoleHistory() {
       return {
         Partita: row.Partita,
         'Modalità': row.Modalita || '',
-        Giocatore: `${row.Giocatore} (${row.nick})`,
+        Giocatore: playerLabel(row.nick),
         Vittoria: winRoles.includes(ruolo) ? 'Sì' : 'No'
       };
     });
@@ -1200,7 +1215,7 @@ async function init() {
     const players = execToObjects('SELECT nick, nome, alias FROM players ORDER BY nome, nick');
     const playerSelect = document.getElementById('playerSelect');
     playerSelect.innerHTML = players.map(p => {
-      const label = p.alias ? `${p.nome} (${p.alias})` : `${p.nome} (${p.nick})`;
+      const label = playerLabel(p.nick);
       return `<option value="${escapeHtml(p.nick)}">${escapeHtml(label)}</option>`;
     }).join('');
 
